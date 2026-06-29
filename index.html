@@ -559,7 +559,7 @@ const C = {
 
 const W = 900, H = 600;
 const GROUND_Y = H - 88;
-const LEVEL_W  = 2100;
+let   LEVEL_W  = 2100;   // per-level, set on enter
 const GRAVITY  = 0.52;
 
 // NOTE: level ENVIRONMENTS may expand beyond the 6 brand colors (per-country
@@ -592,6 +592,61 @@ const THEMES = {
   },
 };
 
+// ═══════════════════════════════════════════════════════
+//  JOURNEY LAYOUTS — a country can define a hand-crafted journey
+//  (continuous ground with gaps, scene-based platforms, collectible
+//   anchor positions by id, story-marker captions, dark/cave ranges).
+//  Levels without a layout fall back to the generic builder.
+// ═══════════════════════════════════════════════════════
+const GY = GROUND_Y;
+const LAYOUTS = {
+  slovenia: {
+    width: 7200,
+    // Ground segments with GAPS (a small cave chasm + a couple of jumps)
+    groundSegs: [
+      { x:0,    w:2760 },   // Arrival village + forest        → ends 2760
+      { x:2870, w:690  },   // Cave ledge (110px step gap)      → ends 3560
+      { x:3820, w:1640 },   // Lakeshore (glide chasm 3560–3820)→ ends 5460
+      { x:5560, w:1640 },   // Ascent base → summit (100px gap) → ends 7200
+    ],
+    // Floating platforms [x, y, w] grouped by scene
+    plats: [
+      // 1 · Village
+      [320, GY-100], [560, GY-150], [820, GY-110],
+      // 2 · Forest (rising/falling rhythm)
+      [1150, GY-130], [1400, GY-200], [1660, GY-150], [1900, GY-160],
+      [2160, GY-210], [2420, GY-140],
+      // 3 · Cave ledge (low, leads to the glide chasm)
+      [3040, GY-110], [3300, GY-90],
+      // 4 · Lake (stepping platforms over the water)
+      [3820, GY-110], [4080, GY-160], [4340, GY-120], [4600, GY-175],
+      [4860, GY-120], [5120, GY-165],
+      // 5 · Ascent (a climbing staircase up Triglav)
+      [5600, GY-130], [5800, GY-205], [6000, GY-280], [6200, GY-350],
+      [6400, GY-415], [6560, GY-330], [6760, GY-395], [6980, GY-220],
+    ],
+    // Collectible anchor positions by NAME (stable across DB + static data)
+    collPos: {
+      "Carniolan Honey": { x:680,  y:GY-150 },   // village beekeeping
+      "Brown Bear":      { x:1900, y:GY-200 },   // deep forest
+      "Cave Olm":        { x:3300, y:GY-130 },   // in the cave — grants Glide
+      "Lake Bled":       { x:4600, y:GY-215 },   // over the lake
+      "Mount Triglav":   { x:6760, y:GY-440 },   // the summit (rare)
+    },
+    // Story-marker captions (your voice, fades in as you pass)
+    story: [
+      { x:180,  text:"Day one. I arrived in a tiny village wedged between green mountains." },
+      { x:1250, text:"I followed a trail deep into the forest. Over a thousand bears live in here…" },
+      { x:3050, text:"A cave swallowed the path. Pitch black — and something pale was moving in the water." },
+      { x:3980, text:"The forest opened onto a lake so blue it didn't look real. An island church floated in the middle." },
+      { x:5650, text:"Then the climb began — up and up, toward the roof of Slovenia." },
+      { x:6750, text:"From the very top, I wrote this for you…" },
+    ],
+    dark: [[2760, 3820]],   // the cave is dark
+  },
+};
+function getLayout(id) { return LAYOUTS[id] || null; }
+
 // ── Touch control zones (canvas coords 900×600) ──
 // Positioned so controls don't cover the level's interesting area
 const ZONES = {
@@ -622,6 +677,8 @@ let mapHover = null;
 let platforms    = [];
 let collectibles = [];
 let particles    = [];
+let activeStory  = [];   // [{x, text}] story-marker captions
+let activeDark   = [];   // [[start,end]] cave/dark ranges
 let postcardX    = 0;
 let levelTime    = 0;
 let hudPulse     = 1;
@@ -945,17 +1002,30 @@ function enterLevel(lvl) {
   const powers=getPowers(char.id);
   if (powers.includes('double_jump')) player.extraJumps=1;
 
+  const layout = getLayout(lvl.id);
+  LEVEL_W     = layout ? layout.width : 2100;
+  activeStory = layout ? layout.story : [];
+  activeDark  = layout ? (layout.dark || []) : [];
+
   const ageF=String(char.age);
   collectibles = lvl.collectibles
     .filter(c=>c.forAge==='both'||c.forAge===ageF)
-    .map(c=>({ ...c, worldY:c.y, bobOffset:Math.random()*Math.PI*2, collectedNow:false }));
+    .map(c=>{
+      const pos = layout && (layout.collPos[c.id] || layout.collPos[c.name]);
+      return { ...c,
+        x:      pos ? pos.x : c.x,
+        worldY: pos ? pos.y : c.y,
+        bobOffset: Math.random()*Math.PI*2, collectedNow:false };
+    });
 
-  platforms  = buildPlatforms();
+  platforms  = layout ? buildLayoutPlatforms(layout) : buildPlatforms();
   postcardX  = LEVEL_W-120;
+  player.safeX = player.x; player.safeY = player.y;
 
   // Atmosphere particles spread across the whole level
   particles = [];
-  for (let i=0;i<70;i++) {
+  const pCount = Math.min(180, Math.round(LEVEL_W/45));
+  for (let i=0;i<pCount;i++) {
     particles.push({
       x: Math.random()*LEVEL_W,
       y: Math.random()*(H-120)+20,
@@ -966,6 +1036,15 @@ function enterLevel(lvl) {
     });
   }
   startAmbient(lvl.theme);
+}
+
+// Build platforms from a hand-crafted journey layout
+function buildLayoutPlatforms(L) {
+  const arr = [];
+  L.groundSegs.forEach(s => arr.push({ x:s.x, y:GROUND_Y, w:s.w, h:92, isGround:true }));
+  const kinds = ['log','rock','plank']; let ki = 0;
+  L.plats.forEach(p => arr.push({ x:p[0], y:p[1], w:p[2]||150, h:14, isGround:false, art:kinds[ki++ % 3] }));
+  return arr;
 }
 
 function buildPlatforms() {
@@ -1102,6 +1181,14 @@ function updateLevel() {
       if (powers.includes('double_jump')) player.extraJumps=1;
     }
   });
+
+  // Remember the last safe ground spot; respawn if you fall in a gap (no penalty)
+  if (player.onGround) { player.safeX = player.x; player.safeY = player.y; }
+  if (player.y > H + 140) {
+    player.x = player.safeX; player.y = player.safeY - 4;
+    player.vx = player.vy = 0;
+    sfx('land');
+  }
 
   collectibles.forEach(col => {
     if (col.collectedNow || isCollected(CHARACTERS[charIdx].id, activeLvl.id, col.id)) return;
@@ -1278,6 +1365,9 @@ function drawLevel() {
   drawPostcardMarker();
   drawPlayer();
 
+  // ── Cave / dark ranges (under the foreground so foliage stays dark) ──
+  drawCaveDark();
+
   // ── Layer 4: Foreground occluders (parallax 1.25) — the Ori depth trick ──
   // 'multiply' lets silhouette art on a WHITE background drop its white for free.
   if (!drawArtLayer('foreground', 1.25, 'multiply')) drawForeground(T);
@@ -1287,6 +1377,7 @@ function drawLevel() {
   // Per-country signature-hue light overlay (ties the scene together)
   if (T.tint) { ctx.fillStyle = T.tint; ctx.fillRect(0,0,W,H); }
 
+  drawStoryCaption();
   drawHUD();
   if (isMobile) drawTouchControls();
 }
@@ -1296,20 +1387,24 @@ function drawPlatform(p,T) {
   if (sx+sw<-10||sx>W+10) return;
 
   if (p.isGround) {
-    // Solid earth fill below the ground line (backstop, keeps floor opaque)
-    ctx.fillStyle=T.groundBot; ctx.fillRect(0, p.y+40, W, H-(p.y+40));
+    // Draw only within THIS segment's screen span, so gaps read as chasms.
+    const x0=Math.max(sx,0), x1=Math.min(sx+sw,W);
+    if (x1<=x0) return;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x0, p.y-24, x1-x0, H-(p.y-24)); ctx.clip();
+    ctx.fillStyle=T.groundBot; ctx.fillRect(x0, p.y+40, x1-x0, H);
     if (artOk('ground')) {
-      // Dedicated painted ground layer at play-layer parallax (1.0).
-      // Authored seamless L-R; grass surface sits at the image top → align to p.y.
       const img=currentArt['ground'];
-      const gh=H - p.y + 60;                 // tall enough to reach screen bottom
+      const gh=H - p.y + 60;
       const gw=gh*(img.width/img.height);
-      let off=-(camX % gw); if(off>0) off-=gw;
-      for(let x=off;x<W;x+=gw) ctx.drawImage(img, x, p.y-12, gw, gh);
+      // tile aligned to this segment's left edge
+      let start = sx - (((sx % gw)+gw)%gw);
+      for(let x=start; x<x1; x+=gw) ctx.drawImage(img, x, p.y-12, gw, gh);
     } else {
-      ctx.fillStyle=T.groundTop; ctx.fillRect(sx,p.y,sw,p.h);
-      ctx.fillStyle=T.grassLine; ctx.fillRect(sx,p.y,sw,8);
+      ctx.fillStyle=T.groundTop; ctx.fillRect(x0,p.y,x1-x0,p.h);
+      ctx.fillStyle=T.grassLine; ctx.fillRect(x0,p.y,x1-x0,8);
     }
+    ctx.restore();
     return;
   }
 
@@ -1616,6 +1711,66 @@ function drawPlayer() {
       ctx.beginPath(); ctx.moveTo(sx+w-4,sy+h*.5); ctx.lineTo(sx+w+14,sy+h*.38); ctx.stroke();
     }
   }
+  ctx.restore();
+}
+
+// Darken the view inside cave ranges; a soft light follows the player so the
+// collectible glow matters. Intensity scales with how much of the view is dark.
+function drawCaveDark() {
+  if (!activeDark.length) return;
+  const viewL = camX, viewR = camX + W;
+  let cover = 0;
+  activeDark.forEach(([s,e]) => {
+    const o = Math.max(0, Math.min(viewR,e) - Math.max(viewL,s));
+    cover = Math.max(cover, o / W);
+  });
+  if (cover <= 0.01) return;
+  const a = cover * 0.78;
+  // Base darkness
+  ctx.fillStyle = `rgba(8,12,20,${a})`;
+  ctx.fillRect(0,0,W,H);
+  // A pool of light around the player (punched back out)
+  const px = player.x - camX + player.w/2, py = player.y + player.h/2;
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-out';
+  const r = ctx.createRadialGradient(px,py,20, px,py,200);
+  r.addColorStop(0, `rgba(0,0,0,${a})`); r.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = r; ctx.beginPath(); ctx.arc(px,py,200,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// Story-marker captions — fade in as the player passes each beat. Your voice.
+function drawStoryCaption() {
+  if (!activeStory.length) return;
+  let best=null, bestD=1e9;
+  activeStory.forEach(b => { const d=Math.abs(player.x - b.x); if (d<bestD){bestD=d;best=b;} });
+  if (!best || bestD > 300) return;
+  const alpha = Math.min(1, (300 - bestD)/120);
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = "400 17px 'Baloo 2', sans-serif";
+  ctx.textAlign='left'; ctx.textBaseline='top';
+  // word-wrap to ~ 560px
+  const words = best.text.split(' ');
+  const maxW = 560; let line='', lines=[];
+  words.forEach(w => {
+    const t = line ? line+' '+w : w;
+    if (ctx.measureText(t).width > maxW) { lines.push(line); line=w; } else line=t;
+  });
+  if (line) lines.push(line);
+  const padX=22, padY=14, lh=24;
+  const boxW = Math.min(maxW, Math.max(...lines.map(l=>ctx.measureText(l).width))) + padX*2;
+  const boxH = lines.length*lh + padY*2 - 6;
+  const bx = W/2 - boxW/2, by = 64;
+  // Panel
+  ctx.fillStyle = C.ink85;
+  roundRect(ctx, bx, by, boxW, boxH, 8); ctx.fill();
+  ctx.strokeStyle = 'rgba(212,135,74,0.5)'; ctx.lineWidth = 1.5;
+  roundRect(ctx, bx, by, boxW, boxH, 8); ctx.stroke();
+  // Text (italic-feel via Specimen color)
+  ctx.fillStyle = C.spec;
+  lines.forEach((l,i) => ctx.fillText(l, bx+padX, by+padY+i*lh));
   ctx.restore();
 }
 

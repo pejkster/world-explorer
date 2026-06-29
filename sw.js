@@ -1,4 +1,4 @@
-const CACHE = 'world-explorer-v3';
+const CACHE = 'world-explorer-v4';
 const ASSETS = [
   '/',
   '/index.html',
