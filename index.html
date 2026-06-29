@@ -728,6 +728,7 @@ function buildCharSelect() {
 
 function startGame() {
   if (charIdx === null) return;
+  loadCharArt(CHARACTERS[charIdx].id);
   initAudio();
   if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   hide('char-select');
@@ -1157,6 +1158,52 @@ function drawArtLayer(name, speed, blend) {
   return true;
 }
 
+// ── Character sprite loader (assets/characters/<id>/<state>-N.png) ──
+const CHAR_FRAMES = {
+  idle: ['idle-1','idle-2','idle-3','idle-4'],
+  run:  ['run-1','run-2','run-3','run-4','run-5','run-6'],
+  jump: ['jump-up','jump-down'],
+};
+const charArt = {};
+function loadCharArt(id) {
+  if (charArt[id]) return charArt[id];
+  const set = { idle:[], run:[], jump:[] };
+  for (const st in CHAR_FRAMES) {
+    CHAR_FRAMES[st].forEach(n => {
+      const img = new Image(); img._ok = false;
+      img.onload = () => { img._ok = true; };
+      img.onerror = () => {};
+      img.src = `assets/characters/${id}/${n}.png`;
+      set[st].push(img);
+    });
+  }
+  charArt[id] = set; return set;
+}
+function okFrames(arr) { return arr.filter(i => i && i._ok); }
+
+// Returns true if it drew a sprite frame (context already mirrored for facing).
+function drawCharSprite(char, sx, sy, w, h) {
+  const ca = charArt[char.id]; if (!ca) return false;
+  const moving = Math.abs(player.vx) > 0.4;
+  let frames = null;
+  if (!player.onGround) {
+    const j = okFrames(ca.jump);
+    if (j.length) frames = [ j[player.vy < 0 ? 0 : Math.min(1, j.length-1)] ];
+  }
+  if (!frames && moving && player.onGround) { const r = okFrames(ca.run); if (r.length) frames = r; }
+  if (!frames) { const idle = okFrames(ca.idle); if (idle.length) frames = idle; }
+  if (!frames) { const r = okFrames(ca.run); if (r.length) frames = r; }
+  if (!frames || !frames.length) return false;
+  const rate = moving ? 10 : 3;
+  const img = frames[Math.floor(levelTime*rate) % frames.length];
+  if (!img || !img._ok) return false;
+  const drawH = h * 1.85;
+  const drawW = drawH * (img.width / img.height);
+  const cx = sx + w/2, feet = sy + h;
+  ctx.drawImage(img, cx - drawW/2, feet - drawH, drawW, drawH);
+  return true;
+}
+
 function drawLevel() {
   if (!activeLvl) return;
   const T = THEMES[activeLvl.theme] || THEMES.forest;
@@ -1538,32 +1585,36 @@ function drawPlayer() {
     roundRect(ctx,sx-player.facing*12+4,sy+h*.3,w-8,h*.55,4); ctx.fill();
     ctx.globalAlpha=1;
   }
-  // Body
-  ctx.fillStyle=char.bodyColor;
-  roundRect(ctx,sx+4,sy+h*.38,w-8,h*.58,4); ctx.fill();
-  ctx.strokeStyle=C.ink; ctx.lineWidth=1.5; ctx.stroke();
-  // Legs
-  ctx.fillStyle=adjustColor(C.ink,20);
-  roundRect(ctx,sx+5,sy+h*.84,10,h*.18,3); ctx.fill();
-  roundRect(ctx,sx+w-15,sy+h*.84,10,h*.18,3); ctx.fill();
-  // Head
-  ctx.fillStyle='#E8B98A';
-  ctx.beginPath(); ctx.ellipse(sx+w/2,sy+h*.26,13,13,0,0,Math.PI*2); ctx.fill();
-  ctx.strokeStyle=C.ink; ctx.lineWidth=1.5; ctx.stroke();
-  // Hat
-  ctx.fillStyle=char.hatColor;
-  roundRect(ctx,sx+w/2-13,sy+h*.13,26,10,3); ctx.fill();
-  ctx.fillRect(sx+w/2-8,sy+h*.04,16,11);
-  ctx.strokeStyle=C.ink; ctx.lineWidth=1;
-  roundRect(ctx,sx+w/2-13,sy+h*.13,26,10,3); ctx.stroke();
-  // Eye
-  ctx.fillStyle=C.ink;
-  ctx.beginPath(); ctx.arc(sx+w/2+5,sy+h*.25,2.5,0,Math.PI*2); ctx.fill();
-  // Glide arms
-  if (powers.includes('glide') && !player.onGround && player.vy>0 && (keys['ArrowUp']||keys[' ']||touch.jump)) {
-    ctx.strokeStyle=char.bodyColor; ctx.lineWidth=3;
-    ctx.beginPath(); ctx.moveTo(sx+4,sy+h*.5); ctx.lineTo(sx-14,sy+h*.38); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(sx+w-4,sy+h*.5); ctx.lineTo(sx+w+14,sy+h*.38); ctx.stroke();
+
+  // Painted sprite if available, else vector fallback
+  if (!drawCharSprite(char, sx, sy, w, h)) {
+    // Body
+    ctx.fillStyle=char.bodyColor;
+    roundRect(ctx,sx+4,sy+h*.38,w-8,h*.58,4); ctx.fill();
+    ctx.strokeStyle=C.ink; ctx.lineWidth=1.5; ctx.stroke();
+    // Legs
+    ctx.fillStyle=adjustColor(C.ink,20);
+    roundRect(ctx,sx+5,sy+h*.84,10,h*.18,3); ctx.fill();
+    roundRect(ctx,sx+w-15,sy+h*.84,10,h*.18,3); ctx.fill();
+    // Head
+    ctx.fillStyle='#E8B98A';
+    ctx.beginPath(); ctx.ellipse(sx+w/2,sy+h*.26,13,13,0,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle=C.ink; ctx.lineWidth=1.5; ctx.stroke();
+    // Hat
+    ctx.fillStyle=char.hatColor;
+    roundRect(ctx,sx+w/2-13,sy+h*.13,26,10,3); ctx.fill();
+    ctx.fillRect(sx+w/2-8,sy+h*.04,16,11);
+    ctx.strokeStyle=C.ink; ctx.lineWidth=1;
+    roundRect(ctx,sx+w/2-13,sy+h*.13,26,10,3); ctx.stroke();
+    // Eye
+    ctx.fillStyle=C.ink;
+    ctx.beginPath(); ctx.arc(sx+w/2+5,sy+h*.25,2.5,0,Math.PI*2); ctx.fill();
+    // Glide arms
+    if (powers.includes('glide') && !player.onGround && player.vy>0 && (keys['ArrowUp']||keys[' ']||touch.jump)) {
+      ctx.strokeStyle=char.bodyColor; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(sx+4,sy+h*.5); ctx.lineTo(sx-14,sy+h*.38); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx+w-4,sy+h*.5); ctx.lineTo(sx+w+14,sy+h*.38); ctx.stroke();
+    }
   }
   ctx.restore();
 
@@ -1908,7 +1959,7 @@ canvas.addEventListener('touchend', e=>{
 },{passive:false});
 
 // Desktop mouse (map only)
-canvas.addEventListener('click',     e=>{ const p=canvasCoords(e); if(appState==='map')mapClick(p.x,p.y); });
+canvas.addEventListener('click',     e=>{ const p=canvasCoords(e); mapClick(p.x,p.y); });
 canvas.addEventListener('mousemove', e=>{ const p=canvasCoords(e); mapMove(p.x,p.y); });
 
 // Keyboard
