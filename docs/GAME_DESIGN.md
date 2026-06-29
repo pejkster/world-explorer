@@ -200,5 +200,25 @@ style). You already have emoji as the baseline; upgrade favorites over time.
 - **Audio:** basic from the start — synthesized SFX + gentle ambient, mute toggle.
 - **Postcard:** real landscape photo of Nejc at the location (TBD which photo per country).
 
+## 7b. The Journey Model (long-form levels)
+
+A level is the **retelling of Nejc's trip**: left-to-right = chronology, up/down =
+the terrain itself. Each country = a 6-scene journey, ~2-4 min:
+Arrival → Forest/Wild → Cave (descend, dark, glide) → Lake/Water → Ascent (climb,
+double-jump) → Summit (the postcard, earned by the climb).
+
+Storytelling devices:
+- **Contextual collectibles** — each sits where it happened in the story.
+- **Story-marker captions** — short notes in Nejc's voice fade in as you pass key
+  spots (the narration thread). Defined per level in `LAYOUTS[id].story`.
+- **Terrain as emotion** — descend into the cave's dark; climb to the summit peak
+  where the message lands.
+- **Powers gate progress naturally** — collect the olm (grants Glide) right before
+  the chasm that needs it.
+
+Implemented in code as `LAYOUTS[id]` = { width, groundSegs (with gaps), plats,
+collPos (by collectible NAME), story, dark ranges }. Levels without a layout use
+the generic builder. Gaps + no-penalty fall-respawn make real platforming safe for a 6yr.
+
 ## 8. Build Log
 - ✅ Controller feel pass: run acceleration/friction, variable jump height, coyote time, jump buffer, proper timed dash. Synthesized audio + ambient pad, M to mute.
