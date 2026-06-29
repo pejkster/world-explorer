@@ -10,7 +10,7 @@ const CHARACTERS = [
   },
   {
     id: "nephew2",
-    name: "Explorer 2",    // ← change this name
+    name: "Tibor",
     bodyColor: "#2D6A4F",   // Botanical
     hatColor:  "#1A3A5C",   // Cartographic
     age: 11,
