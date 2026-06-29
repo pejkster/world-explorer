@@ -1142,16 +1142,18 @@ function loadLevelArt(id) {
 function artOk(name) { return currentArt && currentArt[name] && currentArt[name]._ok; }
 
 // Draw a wide painting as a parallax layer: scale to canvas height, tile across.
-function drawArtLayer(name, speed) {
+function drawArtLayer(name, speed, blend) {
   if (!artOk(name)) return false;
   const img = currentArt[name];
   const scale = H / img.height;
   const tileW = img.width * scale;
   let off = -((camX*speed) % tileW);
   if (off > 0) off -= tileW;
+  if (blend) ctx.globalCompositeOperation = blend;  // e.g. 'multiply' for silhouettes on white
   for (let x = off; x < W; x += tileW) {
     ctx.drawImage(img, x, 0, tileW, H);
   }
+  if (blend) ctx.globalCompositeOperation = 'source-over';
   return true;
 }
 
@@ -1230,7 +1232,8 @@ function drawLevel() {
   drawPlayer();
 
   // ── Layer 4: Foreground occluders (parallax 1.25) — the Ori depth trick ──
-  if (!drawArtLayer('foreground', 1.25)) drawForeground(T);
+  // 'multiply' lets silhouette art on a WHITE background drop its white for free.
+  if (!drawArtLayer('foreground', 1.25, 'multiply')) drawForeground(T);
   // ── Layer 5: Atmosphere ──
   drawParticles(T);
   drawVignette();

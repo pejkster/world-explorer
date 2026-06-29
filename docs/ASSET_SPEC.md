@@ -95,6 +95,11 @@ All authored at 2×. PNG, transparent EXCEPT `sky` (opaque) and photos (JPG).
 | `near.png` | 3600 × 1200 | helpful |
 | `foreground.png` | 5200 × 1200 | helpful |
 
+> **`foreground.png` transparency shortcut:** it's drawn with **multiply blend**,
+> so you can paint the silhouettes as **dark shapes on a plain WHITE background —
+> no transparency needed.** White drops out automatically; only the dark plants
+> remain as occluders. (Transparent PNG also still works.)
+
 **Ground — a dedicated painted floor layer (NOT a platform tile). One long horizontal strip, the grass/surface at the TOP edge, earth/roots/foliage filling down. Seamless left-right so it repeats invisibly across the whole floor.**
 
 | File | Size | Tileable? |
