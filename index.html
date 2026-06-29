@@ -136,6 +136,8 @@ canvas {
 #char-select {
   background: var(--carto);
   flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .cs-inner {
   display: flex;
@@ -144,6 +146,16 @@ canvas {
   gap: 24px;
   padding: 36px 48px;
   width: 100%;
+}
+/* Short landscape screens (phones) — compact so everything fits */
+@media (max-height: 480px) {
+  .cs-inner { gap: 12px; padding: 14px 24px; }
+  .cs-logo { font-size: 28px; }
+  .cs-sub { margin-top: -8px; }
+  .cs-rule { display: none; }
+  .cs-card { padding: 12px 20px; min-width: 130px; }
+  .cs-avatar { width: 48px; height: 48px; font-size: 26px; }
+  .btn-primary { padding: 10px 22px; }
 }
 .cs-logo {
   font-family: 'Playfair Display', serif;
@@ -217,7 +229,7 @@ canvas {
 }
 
 /* ── Specimen Card ── */
-#spec-overlay { background: rgba(27,42,59,0.75); }
+#spec-overlay { background: rgba(27,42,59,0.75); overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px; }
 .spec-card {
   background-color: var(--spec);
   background-image: radial-gradient(circle, rgba(27,42,59,0.1) 1px, transparent 1px);
