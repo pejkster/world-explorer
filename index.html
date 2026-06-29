@@ -1619,14 +1619,6 @@ function drawHUD() {
   ctx.font="600 12px 'Baloo 2',sans-serif"; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle=C.spec;
   ctx.fillText('📖  Journal', ZONES.journal.x+ZONES.journal.w/2, ZONES.journal.y+ZONES.journal.h/2);
   drawMuteBtn();
-
-  // Progress bar
-  ctx.fillStyle=C.ink85; roundRect(ctx,10,H-18,W-20,8,4); ctx.fill();
-  const prog=player.x/(LEVEL_W-player.w);
-  ctx.fillStyle=C.bot; roundRect(ctx,10,H-18,(W-20)*prog,8,3); ctx.fill();
-  ctx.beginPath(); ctx.arc(10+(W-20)*prog,H-14,7,0,Math.PI*2);
-  ctx.fillStyle=char.bodyColor; ctx.fill();
-  ctx.strokeStyle=C.ink; ctx.lineWidth=1.5; ctx.stroke();
 }
 
 function drawMuteBtn() {
