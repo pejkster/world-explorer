@@ -1194,7 +1194,7 @@ function drawCharSprite(char, sx, sy, w, h) {
   if (!frames) { const idle = okFrames(ca.idle); if (idle.length) frames = idle; }
   if (!frames) { const r = okFrames(ca.run); if (r.length) frames = r; }
   if (!frames || !frames.length) return false;
-  const rate = moving ? 10 : 3;
+  const rate = moving ? 10 : 1.2;
   const img = frames[Math.floor(levelTime*rate) % frames.length];
   if (!img || !img._ok) return false;
   const drawH = h * 1.85;
