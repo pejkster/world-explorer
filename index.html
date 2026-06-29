@@ -241,6 +241,14 @@ canvas {
   .spec-card, .postcard-wrap { animation: none; }
 }
 .spec-illustration { font-size: 88px; line-height: 1; margin-bottom: 16px; }
+.spec-photo {
+  width: 128px; height: 128px;
+  object-fit: cover;
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 rgba(27,42,59,0.25);
+  margin-bottom: 16px;
+}
 .spec-rule { width:100%; height:1.5px; background:var(--ink); margin: 10px 0; }
 .spec-name-row { width:100%; display:flex; align-items:center; justify-content:space-between; }
 .spec-name {
@@ -439,6 +447,7 @@ canvas {
   <!-- ── Specimen Card ── -->
   <div class="overlay hidden" id="spec-overlay">
     <div class="spec-card">
+      <img class="spec-photo hidden" id="spec-photo" alt="">
       <div class="spec-illustration" id="spec-emoji"></div>
       <div class="spec-rule"></div>
       <div class="spec-name-row">
@@ -508,10 +517,14 @@ canvas {
   </div>
 </div><!-- #wrap -->
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="data/levels.js"></script>
 <script src="data/characters.js"></script>
+<script src="data/supabase-config.js"></script>
+<script src="data/loader.js"></script>
 <script>
 'use strict';
+let LEVELS = window.STATIC_LEVELS || [];
 
 // ═══════════════════════════════════════════════════════
 //  CONSTANTS
@@ -1210,7 +1223,18 @@ function triggerCard(col) {
   appState='popup'; col.collectedNow=true; hudPulse=1.18;
   const charId=CHARACTERS[charIdx].id;
   markCollected(charId, activeLvl.id, col.id);
-  document.getElementById('spec-emoji').textContent = col.emoji;
+  // Cloud sync (fire and forget)
+  const cs=getCharSave(charId);
+  if (typeof cloudSaveProgress==='function')
+    cloudSaveProgress(charId, activeLvl.id, cs.collected[activeLvl.id]||[], cs.powers||[]);
+  const photoEl = document.getElementById('spec-photo');
+  const emojiEl = document.getElementById('spec-emoji');
+  if (col.photoUrl) {
+    photoEl.src = col.photoUrl; photoEl.classList.remove('hidden'); emojiEl.classList.add('hidden');
+  } else {
+    photoEl.classList.add('hidden'); emojiEl.classList.remove('hidden');
+    emojiEl.textContent = col.emoji;
+  }
   document.getElementById('spec-name').textContent  = col.name.toUpperCase();
   document.getElementById('spec-latin').textContent = col.latinName||'';
   document.getElementById('spec-fact').textContent  = col.fact;
@@ -1382,8 +1406,14 @@ function loop() {
 // ═══════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════
-buildCharSelect();
+(async function init() {
+  drawLoadingBg();
+  try { LEVELS = await loadLevelsFromSupabase(); } catch(e) {}
+  buildCharSelect();
+  drawLoadingBg();
+})();
 
+function drawLoadingBg() {
 // Background map behind char select
 ctx.fillStyle=C.carto; ctx.fillRect(0,0,W,H);
 ctx.strokeStyle='rgba(245,239,224,0.05)'; ctx.lineWidth=1;
@@ -1392,6 +1422,7 @@ for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.strok
 ctx.fillStyle=C.bot;
 [[55,115,165,170],[130,300,75,170],[420,100,100,75],[428,185,110,245],[525,80,290,185],[680,375,140,100]]
   .forEach(([x,y,w,h])=>{ roundRect(ctx,x,y,w,h,20); ctx.fill(); });
+}
 
 // PWA service worker
 if ('serviceWorker' in navigator) {

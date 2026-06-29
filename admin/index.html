@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>World Explorer — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Baloo+2:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1B2A3B;--bot:#2D6A4F;--carto:#1A3A5C;--spec:#F5EFE0;--amber:#D4874A;--red:#C0392B;}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+body{
+  background:var(--carto);
+  font-family:'Baloo 2',sans-serif;
+  color:var(--ink);
+  min-height:100vh;
+  padding:24px;
+}
+h1,h2,h3{font-family:'Playfair Display',serif;letter-spacing:0.06em;text-transform:uppercase;}
+.wrap{max-width:920px;margin:0 auto;}
+
+/* Header */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;}
+.logo{color:var(--spec);font-size:28px;}
+.logo .sub{font-family:'Baloo 2';font-size:12px;font-weight:600;color:var(--amber);letter-spacing:0.12em;display:block;margin-top:-4px;}
+
+/* Panels */
+.panel{
+  background-color:var(--spec);
+  background-image:radial-gradient(circle,rgba(27,42,59,0.07) 1px,transparent 1px);
+  background-size:12px 12px;
+  border:2px solid var(--ink);
+  border-radius:4px;
+  box-shadow:4px 6px 0 rgba(27,42,59,0.25);
+  padding:24px 28px;
+  margin-bottom:20px;
+}
+.panel h2{font-size:22px;margin-bottom:16px;border-bottom:1.5px solid var(--ink);padding-bottom:10px;}
+
+/* Login */
+#login{max-width:420px;margin:80px auto;}
+.login-msg{font-size:15px;color:rgba(27,42,59,0.7);margin-bottom:16px;line-height:1.5;}
+
+/* Forms */
+label{display:block;font-size:13px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:rgba(27,42,59,0.6);margin:14px 0 5px;}
+input,textarea,select{
+  width:100%;font-family:'Baloo 2',sans-serif;font-size:16px;
+  padding:10px 12px;border:2px solid var(--ink);border-radius:6px;
+  background:var(--spec);color:var(--ink);
+}
+textarea{resize:vertical;min-height:80px;line-height:1.5;}
+.row{display:flex;gap:14px;}
+.row>div{flex:1;}
+
+/* Buttons */
+button{
+  font-family:'Baloo 2',sans-serif;font-weight:600;font-size:16px;
+  border:none;border-radius:6px;padding:12px 22px;cursor:pointer;
+}
+.btn-primary{background:var(--bot);color:var(--spec);}
+.btn-primary:hover{background:#245840;}
+.btn-secondary{background:transparent;color:var(--ink);border:2px solid var(--ink);padding:10px 20px;}
+.btn-secondary:hover{background:#ede7d3;}
+.btn-danger{background:transparent;color:var(--red);border:2px solid var(--red);padding:8px 16px;font-size:14px;}
+.btn-danger:hover{background:var(--red);color:var(--spec);}
+.btn-row{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
+
+/* Level list */
+.level-card{
+  background:var(--spec);border:2px solid var(--ink);border-radius:4px;
+  box-shadow:2px 3px 0 rgba(27,42,59,0.2);padding:16px 18px;margin-bottom:14px;
+}
+.level-card-head{display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+.level-card-title{font-family:'Playfair Display',serif;font-size:18px;letter-spacing:0.05em;text-transform:uppercase;}
+.level-meta{font-size:13px;color:rgba(27,42,59,0.5);}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:3px;letter-spacing:0.06em;text-transform:uppercase;}
+.badge.unlocked{background:var(--bot);color:var(--spec);}
+.badge.locked{background:transparent;color:var(--ink);border:1.5px solid var(--ink);}
+
+/* Collectible rows */
+.coll-list{margin-top:14px;border-top:1.5px dashed rgba(27,42,59,0.3);padding-top:12px;}
+.coll-row{
+  display:flex;align-items:center;gap:12px;padding:8px 0;
+  border-bottom:1px solid rgba(27,42,59,0.12);
+}
+.coll-thumb{width:42px;height:42px;border:2px solid var(--ink);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;flex-shrink:0;}
+.coll-thumb img{width:100%;height:100%;object-fit:cover;}
+.coll-info{flex:1;}
+.coll-name{font-weight:600;font-size:15px;}
+.coll-sub{font-size:12px;color:rgba(27,42,59,0.5);font-style:italic;}
+.coll-actions{display:flex;gap:6px;}
+.coll-actions button{padding:6px 12px;font-size:13px;}
+
+/* Photo upload */
+.photo-drop{
+  border:2px dashed var(--ink);border-radius:6px;padding:20px;text-align:center;
+  cursor:pointer;background:rgba(27,42,59,0.03);font-size:14px;color:rgba(27,42,59,0.6);
+}
+.photo-drop:hover{background:rgba(212,135,74,0.08);border-color:var(--amber);}
+.photo-preview{width:100px;height:100px;object-fit:cover;border:2px solid var(--ink);border-radius:4px;margin-top:10px;}
+
+/* Toast */
+#toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--ink);color:var(--spec);padding:12px 24px;border-radius:6px;
+  font-size:15px;font-weight:600;opacity:0;transition:opacity 0.2s;pointer-events:none;z-index:100;
+}
+#toast.show{opacity:1;}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(27,42,59,0.8);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;overflow-y:auto;}
+.modal-bg.show{display:flex;}
+.modal{background:var(--spec);border:2px solid var(--ink);border-radius:4px;box-shadow:6px 8px 0 rgba(27,42,59,0.3);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:28px 32px;}
+.modal h2{font-size:22px;margin-bottom:8px;}
+.hidden{display:none !important;}
+.hint{font-size:12px;color:rgba(27,42,59,0.5);margin-top:3px;}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div id="login" class="panel hidden">
+  <h2 style="border:none;text-align:center;">Admin Login</h2>
+  <p class="login-msg">Enter your email. We'll send you a magic link — no password needed. Only your email can edit the game.</p>
+  <input type="email" id="login-email" placeholder="nejc.susec@gmail.com">
+  <div class="btn-row">
+    <button class="btn-primary" style="width:100%" onclick="sendMagicLink()">Send Magic Link</button>
+  </div>
+  <p id="login-status" class="hint" style="text-align:center;margin-top:14px;"></p>
+</div>
+
+<!-- ── DASHBOARD ── -->
+<div id="dash" class="wrap hidden">
+  <div class="topbar">
+    <div class="logo">World Explorer<span class="sub">Admin · Field Office</span></div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <a href="../index.html" target="_blank"><button class="btn-secondary">▶ Play Game</button></a>
+      <button class="btn-secondary" onclick="logout()">Log Out</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Levels</h2>
+    <div id="levels-list"></div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="openLevelModal()">+ New Country</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── LEVEL MODAL ── -->
+<div class="modal-bg" id="level-modal">
+  <div class="modal">
+    <h2 id="level-modal-title">New Country</h2>
+    <input type="hidden" id="lvl-orig-id">
+    <div class="row">
+      <div>
+        <label>Country Name</label>
+        <input id="lvl-name" placeholder="Slovenia">
+      </div>
+      <div>
+        <label>Emoji / Flag</label>
+        <input id="lvl-emoji" placeholder="🇸🇮">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>ID (no spaces)</label>
+        <input id="lvl-id" placeholder="slovenia">
+        <div class="hint">Lowercase, used internally. Can't change later.</div>
+      </div>
+      <div>
+        <label>Theme</label>
+        <select id="lvl-theme">
+          <option value="forest">Forest</option>
+          <option value="coastal">Coastal</option>
+          <option value="tropical">Tropical</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Map X (0–100%)</label>
+        <input id="lvl-mapx" type="number" value="50">
+      </div>
+      <div>
+        <label>Map Y (0–100%)</label>
+        <input id="lvl-mapy" type="number" value="30">
+      </div>
+      <div>
+        <label>Unlocked?</label>
+        <select id="lvl-unlocked">
+          <option value="true">Yes — playable</option>
+          <option value="false">No — locked</option>
+        </select>
+      </div>
+    </div>
+    <label>Postcard Message (your note to the nephews)</label>
+    <textarea id="lvl-postcard" placeholder="Hey guys! I'm writing this from..."></textarea>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="saveLevel()">Save Country</button>
+      <button class="btn-secondary" onclick="closeModal('level-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── COLLECTIBLE MODAL ── -->
+<div class="modal-bg" id="coll-modal">
+  <div class="modal">
+    <h2 id="coll-modal-title">New Collectible</h2>
+    <input type="hidden" id="coll-id">
+    <input type="hidden" id="coll-level-id">
+    <input type="hidden" id="coll-photo-url">
+    <div class="row">
+      <div>
+        <label>Name</label>
+        <input id="coll-name" placeholder="Brown Bear">
+      </div>
+      <div>
+        <label>Emoji</label>
+        <input id="coll-emoji" placeholder="🐻">
+      </div>
+    </div>
+    <label>Latin Name (optional)</label>
+    <input id="coll-latin" placeholder="Ursus arctos">
+    <label>Fun Fact</label>
+    <textarea id="coll-fact" placeholder="Slovenia has over 1,000 brown bears..."></textarea>
+
+    <label>Photo (optional — shows large in the card)</label>
+    <div class="photo-drop" id="photo-drop" onclick="document.getElementById('photo-input').click()">
+      📷 Tap to upload a photo
+    </div>
+    <input type="file" id="photo-input" accept="image/*" class="hidden" onchange="uploadPhoto(event)">
+    <img id="photo-preview" class="photo-preview hidden">
+
+    <div class="row">
+      <div>
+        <label>For Age</label>
+        <select id="coll-age">
+          <option value="both">Both nephews</option>
+          <option value="6">Younger only (6)</option>
+          <option value="11">Older only (11)</option>
+        </select>
+      </div>
+      <div>
+        <label>Rare?</label>
+        <select id="coll-rare">
+          <option value="false">Common (green dot)</option>
+          <option value="true">Rare (red dot)</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Position X (0–2100)</label>
+        <input id="coll-x" type="number" value="400">
+      </div>
+      <div>
+        <label>Position Y (100–400)</label>
+        <input id="coll-y" type="number" value="250">
+        <div class="hint">Lower = higher up. Ground ≈ 380.</div>
+      </div>
+    </div>
+
+    <label>Power Unlock (optional)</label>
+    <select id="coll-power" onchange="togglePowerFields()">
+      <option value="">None</option>
+      <option value="double_jump">Double Jump</option>
+      <option value="glide">Glide</option>
+      <option value="dash">Dash</option>
+    </select>
+    <div id="power-fields" class="hidden">
+      <div class="row">
+        <div>
+          <label>Power Name</label>
+          <input id="coll-power-name" placeholder="Mountain Leap">
+        </div>
+        <div>
+          <label>Power Emoji</label>
+          <input id="coll-power-emoji" placeholder="⛰️">
+        </div>
+      </div>
+      <label>Power Description</label>
+      <input id="coll-power-desc" placeholder="Press ↑ again in the air to jump twice.">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-primary" onclick="saveCollectible()">Save Collectible</button>
+      <button class="btn-secondary" onclick="closeModal('coll-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../data/supabase-config.js"></script>
+<script>
+'use strict';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let LEVELS_CACHE = [];
+
+// ── Auth ──
+async function checkAuth() {
+  const { data:{ session } } = await sb.auth.getSession();
+  if (session) { showDash(); }
+  else { document.getElementById('login').classList.remove('hidden'); }
+}
+
+async function sendMagicLink() {
+  const email = document.getElementById('login-email').value.trim();
+  if (!email) return toast('Enter your email');
+  const { error } = await sb.auth.signInWithOtp({
+    email, options: { emailRedirectTo: window.location.href }
+  });
+  document.getElementById('login-status').textContent =
+    error ? ('Error: ' + error.message) : '✓ Check your email for the login link!';
+}
+
+async function logout() { await sb.auth.signOut(); location.reload(); }
+
+function showDash() {
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('dash').classList.remove('hidden');
+  loadLevels();
+}
+
+sb.auth.onAuthStateChange((_e, session) => { if (session) showDash(); });
+
+// ── Load + render levels ──
+async function loadLevels() {
+  const [{ data:levels }, { data:colls }] = await Promise.all([
+    sb.from('levels').select('*').order('sort_order'),
+    sb.from('collectibles').select('*').order('sort_order'),
+  ]);
+  LEVELS_CACHE = levels || [];
+  const list = document.getElementById('levels-list');
+  list.innerHTML = '';
+  if (LEVELS_CACHE.length === 0) {
+    list.innerHTML = '<p class="hint">No countries yet. Add your first one below.</p>';
+  }
+  LEVELS_CACHE.forEach(lvl => {
+    const items = (colls||[]).filter(c => c.level_id === lvl.id);
+    const card = document.createElement('div');
+    card.className = 'level-card';
+    card.innerHTML = `
+      <div class="level-card-head" onclick="this.parentNode.querySelector('.coll-list').classList.toggle('hidden')">
+        <div>
+          <span class="level-card-title">${lvl.emoji} ${lvl.name}</span>
+          <span class="badge ${lvl.unlocked?'unlocked':'locked'}">${lvl.unlocked?'Unlocked':'Locked'}</span>
+        </div>
+        <div class="level-meta">${items.length} collectibles ▾</div>
+      </div>
+      <div class="coll-list">
+        ${items.map(c => `
+          <div class="coll-row">
+            <div class="coll-thumb">${c.photo_url?`<img src="${c.photo_url}">`:c.emoji}</div>
+            <div class="coll-info">
+              <div class="coll-name">${c.name} ${c.rare?'🔴':''} ${c.power?'⚡':''}</div>
+              <div class="coll-sub">${c.latin_name||''} · age ${c.for_age}</div>
+            </div>
+            <div class="coll-actions">
+              <button class="btn-secondary" onclick='editColl(${JSON.stringify(c)})'>Edit</button>
+              <button class="btn-danger" onclick="deleteColl('${c.id}')">✕</button>
+            </div>
+          </div>`).join('')}
+        <div class="btn-row">
+          <button class="btn-secondary" onclick="openCollModal('${lvl.id}')">+ Add Collectible</button>
+          <button class="btn-secondary" onclick='editLevel(${JSON.stringify(lvl)})'>Edit Country</button>
+          <button class="btn-danger" onclick="deleteLevel('${lvl.id}')">Delete Country</button>
+        </div>
+      </div>`;
+    card.querySelector('.coll-list').classList.add('hidden');
+    list.appendChild(card);
+  });
+}
+
+// ── Level modal ──
+function openLevelModal() {
+  document.getElementById('level-modal-title').textContent = 'New Country';
+  ['lvl-name','lvl-emoji','lvl-id','lvl-postcard'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('lvl-id').disabled = false;
+  document.getElementById('lvl-orig-id').value = '';
+  document.getElementById('lvl-theme').value = 'forest';
+  document.getElementById('lvl-mapx').value = 50;
+  document.getElementById('lvl-mapy').value = 30;
+  document.getElementById('lvl-unlocked').value = 'true';
+  document.getElementById('level-modal').classList.add('show');
+}
+function editLevel(lvl) {
+  document.getElementById('level-modal-title').textContent = 'Edit ' + lvl.name;
+  document.getElementById('lvl-name').value = lvl.name;
+  document.getElementById('lvl-emoji').value = lvl.emoji;
+  document.getElementById('lvl-id').value = lvl.id;
+  document.getElementById('lvl-id').disabled = true;
+  document.getElementById('lvl-orig-id').value = lvl.id;
+  document.getElementById('lvl-theme').value = lvl.theme;
+  document.getElementById('lvl-mapx').value = lvl.map_x;
+  document.getElementById('lvl-mapy').value = lvl.map_y;
+  document.getElementById('lvl-unlocked').value = String(lvl.unlocked);
+  document.getElementById('lvl-postcard').value = lvl.postcard_msg || '';
+  document.getElementById('level-modal').classList.add('show');
+}
+async function saveLevel() {
+  const id = document.getElementById('lvl-id').value.trim().toLowerCase().replace(/\s+/g,'-');
+  if (!id) return toast('ID required');
+  const row = {
+    id,
+    name: document.getElementById('lvl-name').value.trim(),
+    emoji: document.getElementById('lvl-emoji').value.trim() || '🌍',
+    theme: document.getElementById('lvl-theme').value,
+    map_x: parseFloat(document.getElementById('lvl-mapx').value),
+    map_y: parseFloat(document.getElementById('lvl-mapy').value),
+    unlocked: document.getElementById('lvl-unlocked').value === 'true',
+    postcard_msg: document.getElementById('lvl-postcard').value.trim(),
+  };
+  const { error } = await sb.from('levels').upsert(row);
+  if (error) return toast('Error: ' + error.message);
+  closeModal('level-modal'); toast('✓ Saved'); loadLevels();
+}
+async function deleteLevel(id) {
+  if (!confirm('Delete this country and all its collectibles?')) return;
+  await sb.from('levels').delete().eq('id', id);
+  toast('Deleted'); loadLevels();
+}
+
+// ── Collectible modal ──
+function openCollModal(levelId) {
+  document.getElementById('coll-modal-title').textContent = 'New Collectible';
+  ['coll-name','coll-emoji','coll-latin','coll-fact','coll-power-name','coll-power-emoji','coll-power-desc','coll-photo-url'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('coll-id').value = '';
+  document.getElementById('coll-level-id').value = levelId;
+  document.getElementById('coll-age').value = 'both';
+  document.getElementById('coll-rare').value = 'false';
+  document.getElementById('coll-x').value = 400;
+  document.getElementById('coll-y').value = 250;
+  document.getElementById('coll-power').value = '';
+  togglePowerFields();
+  document.getElementById('photo-preview').classList.add('hidden');
+  document.getElementById('coll-modal').classList.add('show');
+}
+function editColl(c) {
+  document.getElementById('coll-modal-title').textContent = 'Edit ' + c.name;
+  document.getElementById('coll-id').value = c.id;
+  document.getElementById('coll-level-id').value = c.level_id;
+  document.getElementById('coll-name').value = c.name;
+  document.getElementById('coll-emoji').value = c.emoji;
+  document.getElementById('coll-latin').value = c.latin_name || '';
+  document.getElementById('coll-fact').value = c.fact || '';
+  document.getElementById('coll-photo-url').value = c.photo_url || '';
+  document.getElementById('coll-age').value = c.for_age;
+  document.getElementById('coll-rare').value = String(c.rare);
+  document.getElementById('coll-x').value = c.x;
+  document.getElementById('coll-y').value = c.y;
+  document.getElementById('coll-power').value = c.power || '';
+  document.getElementById('coll-power-name').value = c.power_name || '';
+  document.getElementById('coll-power-emoji').value = c.power_emoji || '';
+  document.getElementById('coll-power-desc').value = c.power_desc || '';
+  togglePowerFields();
+  const prev = document.getElementById('photo-preview');
+  if (c.photo_url) { prev.src = c.photo_url; prev.classList.remove('hidden'); }
+  else prev.classList.add('hidden');
+  document.getElementById('coll-modal').classList.add('show');
+}
+function togglePowerFields() {
+  const has = document.getElementById('coll-power').value !== '';
+  document.getElementById('power-fields').classList.toggle('hidden', !has);
+}
+async function saveCollectible() {
+  const id = document.getElementById('coll-id').value;
+  const row = {
+    level_id: document.getElementById('coll-level-id').value,
+    name: document.getElementById('coll-name').value.trim(),
+    emoji: document.getElementById('coll-emoji').value.trim() || '⭐',
+    latin_name: document.getElementById('coll-latin').value.trim(),
+    fact: document.getElementById('coll-fact').value.trim(),
+    photo_url: document.getElementById('coll-photo-url').value,
+    for_age: document.getElementById('coll-age').value,
+    rare: document.getElementById('coll-rare').value === 'true',
+    x: parseInt(document.getElementById('coll-x').value),
+    y: parseInt(document.getElementById('coll-y').value),
+    power: document.getElementById('coll-power').value,
+    power_name: document.getElementById('coll-power-name').value.trim(),
+    power_emoji: document.getElementById('coll-power-emoji').value.trim(),
+    power_desc: document.getElementById('coll-power-desc').value.trim(),
+  };
+  if (id) row.id = id;
+  const { error } = await sb.from('collectibles').upsert(row);
+  if (error) return toast('Error: ' + error.message);
+  closeModal('coll-modal'); toast('✓ Saved'); loadLevels();
+}
+async function deleteColl(id) {
+  if (!confirm('Delete this collectible?')) return;
+  await sb.from('collectibles').delete().eq('id', id);
+  toast('Deleted'); loadLevels();
+}
+
+// ── Photo upload ──
+async function uploadPhoto(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  toast('Uploading...');
+  const ext = file.name.split('.').pop();
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+  const { error } = await sb.storage.from('collectible-photos').upload(path, file, { upsert:true });
+  if (error) return toast('Upload failed: ' + error.message);
+  const { data } = sb.storage.from('collectible-photos').getPublicUrl(path);
+  document.getElementById('coll-photo-url').value = data.publicUrl;
+  const prev = document.getElementById('photo-preview');
+  prev.src = data.publicUrl; prev.classList.remove('hidden');
+  toast('✓ Photo uploaded');
+}
+
+// ── Helpers ──
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+checkAuth();
+</script>
+</body>
+</html>

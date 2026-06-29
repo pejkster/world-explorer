@@ -1,4 +1,4 @@
-const LEVELS = [
+window.STATIC_LEVELS = [
   {
     id: "slovenia",
     name: "Slovenia",

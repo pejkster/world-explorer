@@ -1,9 +1,11 @@
-const CACHE = 'world-explorer-v1';
+const CACHE = 'world-explorer-v2';
 const ASSETS = [
   '/',
   '/index.html',
   '/data/levels.js',
   '/data/characters.js',
+  '/data/supabase-config.js',
+  '/data/loader.js',
   '/assets/icon.svg',
 ];
 
