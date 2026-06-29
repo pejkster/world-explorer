@@ -551,27 +551,33 @@ const GROUND_Y = H - 88;
 const LEVEL_W  = 2100;
 const GRAVITY  = 0.52;
 
+// NOTE: level ENVIRONMENTS may expand beyond the 6 brand colors (per-country
+// signature hue, like Ori's zones). UI (specimen cards, postcard, HUD) stays
+// strictly on the 6 brand colors.
 const THEMES = {
-  forest:  {
-    skyTop:'#13314f', skyBot:'#1A3A5C', horizon:'#2D6A4F',
-    groundTop:'#1a3d2b', groundBot:'#0f2419',
-    platFill:'#D4874A', platEdge:'#1B2A3B', grassLine:'#2D6A4F',
-    far:'#15324d', mid:'#173a2a', fore:'#0c1f15',
-    fog:'#1A3A5C', particle:'#D4874A', particleKind:'firefly', landmark:'mountain',
+  forest:  {  // Slovenia — cool mossy forest at dusk, firefly gold
+    skyTop:'#13314f', skyBot:'#1f4a5e', horizon:'#3f7a52',
+    groundTop:'#1c4230', groundBot:'#0f2419',
+    platFill:'#D4874A', platEdge:'#1B2A3B', grassLine:'#3f8a52',
+    far:'#1c4a55', mid:'#1d4a34', near:'#163826', fore:'#0c1f15',
+    fog:'#2a5a4a', particle:'#F4C842', particleKind:'firefly', landmark:'mountain',
+    tint:'rgba(120,180,90,0.06)', life:'bear',
   },
-  coastal: {
-    skyTop:'#1A3A5C', skyBot:'#3a5e7e', horizon:'#5a7e96',
-    groundTop:'#1B2A3B', groundBot:'#0e1822',
-    platFill:'#D4874A', platEdge:'#1B2A3B', grassLine:'#D4874A',
-    far:'#22455f', mid:'#1b3346', fore:'#0e1c28',
-    fog:'#3a5e7e', particle:'#F5EFE0', particleKind:'petal', landmark:'fuji',
+  coastal: {  // Japan — soft sakura-silver dusk, drifting petals
+    skyTop:'#2a3a5e', skyBot:'#6a5a7e', horizon:'#c98fa6',
+    groundTop:'#2a2838', groundBot:'#141022',
+    platFill:'#D4874A', platEdge:'#1B2A3B', grassLine:'#c98fa6',
+    far:'#4a4a6e', mid:'#3a3450', near:'#2c2640', fore:'#16101f',
+    fog:'#8a6a8e', particle:'#F5EFE0', particleKind:'petal', landmark:'fuji',
+    tint:'rgba(201,160,176,0.07)', life:'bird',
   },
-  tropical:{
-    skyTop:'#1A3A5C', skyBot:'#2D6A4F', horizon:'#3f8060',
-    groundTop:'#234d36', groundBot:'#13291c',
+  tropical:{  // warm gold-amber temple light
+    skyTop:'#3a4a6e', skyBot:'#7a6a4a', horizon:'#c4892a',
+    groundTop:'#2a5536', groundBot:'#143020',
     platFill:'#1B2A3B', platEdge:'#D4874A', grassLine:'#D4874A',
-    far:'#1d4a36', mid:'#19402e', fore:'#0d2418',
-    fog:'#2D6A4F', particle:'#D4874A', particleKind:'dust', landmark:'volcano',
+    far:'#5a6a4e', mid:'#3a5a3e', near:'#2a4a30', fore:'#13281a',
+    fog:'#a4823a', particle:'#FF8C42', particleKind:'dust', landmark:'volcano',
+    tint:'rgba(196,137,42,0.07)', life:'bird',
   },
 };
 
@@ -1125,11 +1131,21 @@ function drawLevel() {
   // ── Layer 2: Mid silhouette range (parallax 0.24) ──
   drawSilhouetteRange(T.mid, 0.24, 200, 130, 5);
 
+  // ── Ambient background life (a bear in the trees, a bird overhead) ──
+  drawAmbientLife(T);
+
   // ── Layer 2b: Tree/detail band behind play (parallax 0.4) ──
   ctx.fillStyle = adjustColor(T.mid, -10);
   for (let i=0;i<26;i++) {
     const tx=(i*92-(camX*0.4)%92+92)%(W+92)-46;
     drawTreeSilhouette(tx, GROUND_Y+6, 26+ (i%3)*8);
+  }
+
+  // ── Layer 2c: Near background (parallax 0.55) — detailed, closer foliage ──
+  ctx.fillStyle = T.near;
+  for (let i=0;i<20;i++) {
+    const tx=(i*128-(camX*0.55)%128+128)%(W+128)-64;
+    drawTreeSilhouette(tx, GROUND_Y+10, 40 + hash(i*5)*22);
   }
 
   // Distance fog band sitting on the horizon line
@@ -1178,6 +1194,8 @@ function drawLevel() {
   // ── Layer 5: Atmosphere ──
   drawParticles(T);
   drawVignette();
+  // Per-country signature-hue light overlay (ties the scene together)
+  if (T.tint) { ctx.fillStyle = T.tint; ctx.fillRect(0,0,W,H); }
 
   drawHUD();
   if (isMobile) drawTouchControls();
@@ -1311,6 +1329,53 @@ function drawTreeSilhouette(x, baseY, h) {
   ctx.quadraticCurveTo(x-h*0.3, baseY-h*0.6, x, baseY-h);
   ctx.quadraticCurveTo(x+h*0.3, baseY-h*0.6, x+h*0.5, baseY);
   ctx.closePath(); ctx.fill();
+}
+
+// ── Ambient background life — the "look at that!" moments ──
+function drawAmbientLife(T) {
+  if (T.life === 'bear') {
+    // A bear slowly ambling along the far treeline
+    const span = LEVEL_W - 600;
+    const t = (Math.sin(levelTime*0.05)*0.5+0.5);     // 0..1 patrol
+    const dir = Math.cos(levelTime*0.05) >= 0 ? 1 : -1;
+    const bx = 300 + t*span - camX*0.4;
+    const by = GROUND_Y - 26;
+    if (bx > -80 && bx < W+80) {
+      ctx.save();
+      ctx.fillStyle = adjustColor(T.mid, -22);
+      ctx.translate(bx, by);
+      ctx.scale(dir, 1);
+      const bob = Math.sin(levelTime*4)*1.2;
+      // body
+      ctx.beginPath(); ctx.ellipse(0, bob, 26, 15, 0, 0, Math.PI*2); ctx.fill();
+      // head
+      ctx.beginPath(); ctx.ellipse(22, -6+bob, 11, 9, 0, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(26, -14+bob, 3, 0, Math.PI*2); ctx.fill(); // ear
+      // legs (slow walk)
+      const sw = Math.sin(levelTime*4)*3;
+      [-14,-2,10,20].forEach((lx,i)=>{
+        const off = (i%2?sw:-sw);
+        ctx.fillRect(lx, 8, 6, 12+off);
+      });
+      ctx.restore();
+    }
+  } else if (T.life === 'bird') {
+    // A few birds gliding across the sky
+    ctx.strokeStyle = adjustColor(T.far, -20);
+    ctx.lineWidth = 2.5;
+    for (let i=0;i<3;i++) {
+      const speed = 14 + i*5;
+      const bx = ((levelTime*speed + i*340) % (LEVEL_W*0.5+300)) - 150 - camX*0.2;
+      const by = 70 + i*34 + Math.sin(levelTime*0.8 + i)*10;
+      const sx = ((bx % (W+200)) + (W+200)) % (W+200) - 100;
+      const flap = Math.sin(levelTime*5 + i)*5;
+      ctx.beginPath();
+      ctx.moveTo(sx-9, by);
+      ctx.quadraticCurveTo(sx-4, by-6-flap, sx, by);
+      ctx.quadraticCurveTo(sx+4, by-6-flap, sx+9, by);
+      ctx.stroke();
+    }
+  }
 }
 
 // ── Foreground occluders (fast parallax, out-of-focus dark foliage) ──
