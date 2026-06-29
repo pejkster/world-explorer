@@ -1400,9 +1400,11 @@ function drawPlatform(p,T) {
       const img=currentArt['ground'];
       const gh=H - p.y + 60;
       const gw=gh*(img.width/img.height);
-      // tile aligned to this segment's left edge
-      let start = sx - (((sx % gw)+gw)%gw);
-      for(let x=start; x<x1; x+=gw) ctx.drawImage(img, x, p.y-12, gw, gh);
+      // tile in WORLD space so the ground scrolls with the camera
+      const firstWorld = Math.floor(camX / gw) * gw;
+      for(let wx=firstWorld; wx - camX < x1; wx+=gw) {
+        ctx.drawImage(img, wx - camX, p.y-12, gw, gh);
+      }
     } else {
       ctx.fillStyle=T.groundTop; ctx.fillRect(x0,p.y,x1-x0,p.h);
       ctx.fillStyle=T.grassLine; ctx.fillRect(x0,p.y,x1-x0,8);
