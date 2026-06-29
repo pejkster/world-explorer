@@ -555,6 +555,7 @@ const ZONES = {
   jump:    { x:W-260, y:H-118, w:130, h:108 }, // biggest — primary action
   dash:    { x:W-120, y:H-108, w:108, h:94 },
   journal: { x:W-128, y:10,   w:120, h:38 },   // tappable HUD area
+  mute:    { x:W-174, y:10,   w:38,  h:38 },   // mute toggle
 };
 
 const isMobile = 'ontouchstart' in window;
@@ -583,8 +584,23 @@ const player = {
   x:80, y:400, w:34, h:48,
   vx:0, vy:0,
   onGround:false, facing:1,
-  extraJumps:0, dashCooldown:0,
+  extraJumps:0, dashCooldown:0, dashTimer:0,
+  coyote:0, jumpBuf:0, jumping:false,
   animFrame:0, animTimer:0,
+};
+
+// ── Controller feel constants ──
+const FEEL = {
+  ACCEL:    0.65,   // ground acceleration per frame
+  AIR_ACCEL:0.45,   // less control in air
+  FRICTION: 0.80,   // ground stop
+  AIR_DRAG: 0.92,   // air keeps momentum
+  COYOTE:   7,      // frames you can still jump after leaving ground
+  BUFFER:   7,      // frames a jump press is remembered before landing
+  CUT:      0.45,   // velocity kept when jump released early (variable height)
+  DASH_FR:  12,     // dash duration in frames
+  DASH_MULT:4.2,    // dash speed multiplier
+  DASH_CD:  42,     // dash cooldown
 };
 
 // ── Input ──
@@ -664,6 +680,8 @@ function buildCharSelect() {
 
 function startGame() {
   if (charIdx === null) return;
+  initAudio();
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   hide('char-select');
   appState = 'map';
   loop();
@@ -776,6 +794,7 @@ function drawMap() {
   ctx.font = "600 13px 'Baloo 2',sans-serif";
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = C.spec;
   ctx.fillText('📖  Journal', ZONES.journal.x + ZONES.journal.w/2, ZONES.journal.y + ZONES.journal.h/2);
+  drawMuteBtn();
 }
 
 function drawMapContinents() {
@@ -841,6 +860,7 @@ function drawCompassRose(cx,cy,r) {
 }
 
 function mapClick(mx,my) {
+  if (inZone(mx,my,ZONES.mute)) { toggleMute(); return; }
   if (inZone(mx,my,ZONES.journal)) { openJournal(); return; }
   if (appState!=='map') return;
   LEVELS.forEach(lvl => {
@@ -867,7 +887,8 @@ function enterLevel(lvl) {
   activeLvl=lvl; appState='level'; levelTime=0; camX=0; hudPulse=1;
   player.x=80; player.y=GROUND_Y-player.h;
   player.vx=player.vy=0; player.onGround=false; player.facing=1;
-  player.extraJumps=0; player.dashCooldown=0;
+  player.extraJumps=0; player.dashCooldown=0; player.dashTimer=0;
+  player.coyote=0; player.jumpBuf=0; player.jumping=false;
 
   const char=CHARACTERS[charIdx];
   const powers=getPowers(char.id);
@@ -880,6 +901,7 @@ function enterLevel(lvl) {
 
   platforms  = buildPlatforms();
   postcardX  = LEVEL_W-120;
+  startAmbient(lvl.theme);
 }
 
 function buildPlatforms() {
@@ -911,25 +933,66 @@ function updateLevel() {
   const goJ = keys['ArrowUp'] || keys[' '] || keys['w'] || touch.jump;
   const goD = keys['Shift'] || keys['z'] || keys['Z'] || touch.dash;
 
-  player.vx = goR ? speed : goL ? -speed : 0;
-  if (player.vx!==0) player.facing = player.vx>0 ? 1 : -1;
+  // ── Horizontal: acceleration + friction (momentum feels alive) ──
+  const dir = (goR?1:0) - (goL?1:0);
+  if (player.dashTimer > 0) {
+    // Locked dash velocity
+    player.vx = player.facing * speed * FEEL.DASH_MULT;
+    player.dashTimer--;
+  } else {
+    const accel = player.onGround ? FEEL.ACCEL : FEEL.AIR_ACCEL;
+    if (dir !== 0) {
+      player.vx += dir * accel;
+      player.vx = Math.max(-speed, Math.min(speed, player.vx));
+      player.facing = dir;
+    } else {
+      player.vx *= player.onGround ? FEEL.FRICTION : FEEL.AIR_DRAG;
+      if (Math.abs(player.vx) < 0.1) player.vx = 0;
+    }
+  }
 
+  // ── Dash trigger (timed burst, not 1-frame) ──
   if (powers.includes('dash') && goD && dashWasUp && player.dashCooldown<=0) {
-    player.vx = player.facing * speed * 4.5;
-    player.dashCooldown = 55;
+    player.dashTimer = FEEL.DASH_FR;
+    player.dashCooldown = FEEL.DASH_CD;
+    sfx('dash');
   }
   dashWasUp = !goD;
   if (player.dashCooldown>0) player.dashCooldown--;
 
-  if (goJ && jumpWasUp) {
-    if (player.onGround) {
-      player.vy = -jumpH; player.onGround = false;
-    } else if (powers.includes('double_jump') && player.extraJumps>0) {
-      player.vy = -jumpH*0.82; player.extraJumps--;
-    }
+  // ── Coyote time + jump buffer bookkeeping ──
+  if (player.onGround) player.coyote = FEEL.COYOTE;
+  else if (player.coyote>0) player.coyote--;
+
+  const jumpPressed = goJ && jumpWasUp;
+  if (jumpPressed) player.jumpBuf = FEEL.BUFFER;
+  else if (player.jumpBuf>0) player.jumpBuf--;
+
+  // ── Execute jump ──
+  if (player.jumpBuf>0 && player.coyote>0) {
+    player.vy = -jumpH;
+    player.jumping = true;
+    player.onGround = false;
+    player.coyote = 0;
+    player.jumpBuf = 0;
+    sfx('jump');
+  } else if (jumpPressed && !player.onGround && player.coyote<=0
+             && powers.includes('double_jump') && player.extraJumps>0) {
+    player.vy = -jumpH*0.85;
+    player.extraJumps--;
+    player.jumping = true;
+    sfx('jump');
   }
   jumpWasUp = !goJ;
 
+  // ── Variable jump height: release early = shorter hop ──
+  if (player.jumping && !goJ && player.vy < 0) {
+    player.vy *= FEEL.CUT;
+    player.jumping = false;
+  }
+  if (player.vy >= 0) player.jumping = false;
+
+  // ── Glide ──
   if (powers.includes('glide') && goJ && !player.onGround && player.vy>0)
     player.vy = Math.min(player.vy, 2.2);
 
@@ -1090,10 +1153,10 @@ function drawPlayer() {
   ctx.beginPath(); ctx.ellipse(sx+w/2,GROUND_Y+4,w*.45,5,0,0,Math.PI*2); ctx.fill();
 
   // Dash trail
-  if (player.dashCooldown>40) {
-    ctx.globalAlpha=(player.dashCooldown-40)/15*.28;
+  if (player.dashTimer>0) {
+    ctx.globalAlpha=player.dashTimer/FEEL.DASH_FR*.32;
     ctx.fillStyle=C.amber;
-    roundRect(ctx,sx-player.facing*10+4,sy+h*.3,w-8,h*.55,4); ctx.fill();
+    roundRect(ctx,sx-player.facing*12+4,sy+h*.3,w-8,h*.55,4); ctx.fill();
     ctx.globalAlpha=1;
   }
   // Body
@@ -1179,6 +1242,7 @@ function drawHUD() {
   ctx.strokeStyle='rgba(245,239,224,0.25)'; ctx.lineWidth=1; ctx.stroke();
   ctx.font="600 12px 'Baloo 2',sans-serif"; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle=C.spec;
   ctx.fillText('📖  Journal', ZONES.journal.x+ZONES.journal.w/2, ZONES.journal.y+ZONES.journal.h/2);
+  drawMuteBtn();
 
   // Progress bar
   ctx.fillStyle=C.ink85; roundRect(ctx,10,H-18,W-20,8,4); ctx.fill();
@@ -1187,6 +1251,16 @@ function drawHUD() {
   ctx.beginPath(); ctx.arc(10+(W-20)*prog,H-14,7,0,Math.PI*2);
   ctx.fillStyle=char.bodyColor; ctx.fill();
   ctx.strokeStyle=C.ink; ctx.lineWidth=1.5; ctx.stroke();
+}
+
+function drawMuteBtn() {
+  const z = ZONES.mute;
+  ctx.fillStyle = C.ink85;
+  roundRect(ctx, z.x, z.y, z.w, z.h, 6); ctx.fill();
+  ctx.strokeStyle = 'rgba(245,239,224,0.25)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.font = '16px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle = C.spec;
+  ctx.fillText(muted ? '🔇' : '🔊', z.x+z.w/2, z.y+z.h/2);
 }
 
 // ── Canvas-drawn touch controls ──
@@ -1221,6 +1295,7 @@ function drawCtrlBtn(z, label, pressed, large) {
 function triggerCard(col) {
   if (appState!=='level') return;
   appState='popup'; col.collectedNow=true; hudPulse=1.18;
+  sfx(col.power ? 'power' : 'collect');
   const charId=CHARACTERS[charIdx].id;
   markCollected(charId, activeLvl.id, col.id);
   // Cloud sync (fire and forget)
@@ -1295,6 +1370,7 @@ function closeJournal() { hide('journal-overlay'); appState=prevState||'map'; }
 function triggerPostcard() {
   if (appState!=='level') return;
   appState='postcard';
+  sfx('stamp'); stopAmbient();
   const char=CHARACTERS[charIdx], charId=char.id, ageF=String(char.age), lvl=activeLvl;
   const items=lvl.collectibles.filter(c=>c.forAge==='both'||c.forAge===ageF);
   const got=items.filter(c=>isCollected(charId,lvl.id,c.id)).length;
@@ -1310,6 +1386,86 @@ function triggerPostcard() {
 function backToMap() {
   hide('postcard-overlay'); hide('journal-overlay');
   appState='map'; activeLvl=null;
+  stopAmbient();
+}
+
+// ═══════════════════════════════════════════════════════
+//  AUDIO (synthesized — no asset files)
+// ═══════════════════════════════════════════════════════
+let audioCtx = null;
+let muted = (localStorage.getItem('we_muted') === '1');
+let ambientNodes = null;
+
+function initAudio() {
+  if (audioCtx) return;
+  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+  catch(e) { audioCtx = null; }
+}
+
+function tone(freq, dur, type='sine', vol=0.12, when=0) {
+  if (!audioCtx || muted) return;
+  const t0 = audioCtx.currentTime + when;
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = type; osc.frequency.value = freq;
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(vol, t0 + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(g); g.connect(audioCtx.destination);
+  osc.start(t0); osc.stop(t0 + dur + 0.02);
+}
+
+function sfx(kind) {
+  if (!audioCtx || muted) return;
+  switch(kind) {
+    case 'jump':    tone(440, 0.16, 'sine', 0.08); break;
+    case 'collect': // warm rising arpeggio
+      tone(523,0.18,'sine',0.1,0); tone(659,0.18,'sine',0.1,0.08); tone(784,0.3,'sine',0.1,0.16); break;
+    case 'power':   // bright fanfare
+      tone(523,0.2,'triangle',0.1,0); tone(784,0.2,'triangle',0.1,0.1); tone(1047,0.4,'triangle',0.1,0.2); break;
+    case 'stamp':   tone(160, 0.18, 'square', 0.09); tone(110,0.22,'sine',0.07,0.02); break;
+    case 'dash':    tone(660, 0.12, 'sawtooth', 0.05); break;
+    case 'land':    tone(220, 0.08, 'sine', 0.04); break;
+  }
+}
+
+// Gentle ambient pad — soft chord per theme, very low volume
+const AMBIENT_CHORDS = {
+  forest:  [196.00, 246.94, 293.66],  // G major-ish, calm
+  coastal: [220.00, 277.18, 329.63],  // A major, airy
+  tropical:[174.61, 220.00, 261.63],  // F major, warm
+};
+function startAmbient(theme) {
+  stopAmbient();
+  if (!audioCtx || muted) return;
+  const chord = AMBIENT_CHORDS[theme] || AMBIENT_CHORDS.forest;
+  const master = audioCtx.createGain();
+  master.gain.value = 0.0;
+  master.gain.setTargetAtTime(0.05, audioCtx.currentTime, 1.5);
+  master.connect(audioCtx.destination);
+  const oscs = chord.map(f => {
+    const o = audioCtx.createOscillator();
+    o.type = 'sine'; o.frequency.value = f;
+    const g = audioCtx.createGain(); g.gain.value = 0.5;
+    o.connect(g); g.connect(master); o.start();
+    return o;
+  });
+  ambientNodes = { master, oscs };
+}
+function stopAmbient() {
+  if (!ambientNodes) return;
+  const { master, oscs } = ambientNodes;
+  try {
+    master.gain.setTargetAtTime(0, audioCtx.currentTime, 0.4);
+    oscs.forEach(o => o.stop(audioCtx.currentTime + 1.2));
+  } catch(e) {}
+  ambientNodes = null;
+}
+function toggleMute() {
+  muted = !muted;
+  localStorage.setItem('we_muted', muted ? '1' : '0');
+  if (muted) stopAmbient();
+  else if (appState === 'level' && activeLvl) startAmbient(activeLvl.theme);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1358,6 +1514,7 @@ canvas.addEventListener('touchstart', e=>{
     const p=canvasCoords({clientX:t.clientX,clientY:t.clientY});
     activeTouches.set(t.identifier, p);
     // One-shot taps
+    if (inZone(p.x,p.y,ZONES.mute) && (appState==='level'||appState==='map')) { toggleMute(); return; }
     if (inZone(p.x,p.y,ZONES.journal) && (appState==='level'||appState==='map')) { openJournal(); return; }
     if (appState==='map') mapClick(p.x,p.y);
   });
@@ -1388,6 +1545,7 @@ window.addEventListener('keydown', e=>{
   keys[e.key]=true;
   if([' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
   if((e.key==='j'||e.key==='J')&&(appState==='level'||appState==='map')) openJournal();
+  if(e.key==='m'||e.key==='M') toggleMute();
   if(e.key==='Escape'&&appState==='journal') closeJournal();
 });
 window.addEventListener('keyup', e=>{ keys[e.key]=false; });
