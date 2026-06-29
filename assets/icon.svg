@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1A3A5C"/>
+  <!-- Globe circle -->
+  <circle cx="256" cy="256" r="180" fill="#2D6A4F" stroke="#F5EFE0" stroke-width="8"/>
+  <!-- Latitude lines -->
+  <ellipse cx="256" cy="256" rx="180" ry="60" fill="none" stroke="#F5EFE0" stroke-width="4" opacity="0.4"/>
+  <line x1="76" y1="256" x2="436" y2="256" stroke="#F5EFE0" stroke-width="4" opacity="0.4"/>
+  <!-- Meridian -->
+  <ellipse cx="256" cy="256" rx="60" ry="180" fill="none" stroke="#F5EFE0" stroke-width="4" opacity="0.4"/>
+  <!-- Compass needle N -->
+  <polygon points="256,100 244,200 256,190 268,200" fill="#F5EFE0"/>
+  <!-- Compass needle S -->
+  <polygon points="256,412 244,312 256,322 268,312" fill="#D4874A"/>
+  <!-- Centre dot -->
+  <circle cx="256" cy="256" r="14" fill="#D4874A" stroke="#F5EFE0" stroke-width="4"/>
+</svg>

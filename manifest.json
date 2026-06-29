@@ -1,0 +1,13 @@
+{
+  "name": "World Explorer",
+  "short_name": "World Explorer",
+  "description": "A living platformer — explore the world through Uncle Nejc's travels",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#1B2A3B",
+  "theme_color": "#1B2A3B",
+  "icons": [
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

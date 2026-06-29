@@ -2,45 +2,95 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="World Explorer">
+<meta name="theme-color" content="#1B2A3B">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="assets/icon.svg">
 <title>World Explorer</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Baloo+2:wght@400;600&display=swap" rel="stylesheet">
 <style>
-/* ── Palette ───────────────────────────────────────────── */
+/* ── Palette ── */
 :root {
-  --ink:       #1B2A3B;
-  --botanical: #2D6A4F;
-  --carto:     #1A3A5C;
-  --specimen:  #F5EFE0;
-  --amber:     #D4874A;
-  --red:       #C0392B;
-  --ink-85:    rgba(27,42,59,0.85);
-  --ink-60:    rgba(27,42,59,0.6);
+  --ink:    #1B2A3B;
+  --bot:    #2D6A4F;
+  --carto:  #1A3A5C;
+  --spec:   #F5EFE0;
+  --amber:  #D4874A;
+  --red:    #C0392B;
+  --ink85:  rgba(27,42,59,0.85);
 }
 
-/* ── Reset ─────────────────────────────────────────────── */
+/* ── Reset ── */
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-body {
-  background: var(--ink);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  font-family: 'Baloo 2', sans-serif;
+
+html, body {
+  width: 100%; height: 100%;
   overflow: hidden;
+  background: var(--ink);
+  font-family: 'Baloo 2', sans-serif;
+  touch-action: none;
 }
+
+/* ── Game wrapper + responsive canvas ── */
 #wrap {
-  position: relative;
-  width: 900px;
-  height: 600px;
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ink);
 }
 canvas {
   display: block;
-  border: 2px solid var(--ink);
-  box-shadow: 8px 8px 0 rgba(0,0,0,0.5);
+  /* Scale to fill screen, maintain 3:2 ratio */
+  width:  min(100vw, 150vh);
+  height: min(100vh, 66.67vw);
+  border: none;
+  outline: none;
+  touch-action: none;
 }
 
-/* ── Overlay base ──────────────────────────────────────── */
+/* ── Portrait rotation warning ── */
+#rotate-msg {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--ink);
+  z-index: 200;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  text-align: center;
+  padding: 40px;
+}
+@media (orientation: portrait) {
+  #rotate-msg { display: flex; }
+}
+.rotate-icon { font-size: 64px; animation: rotateHint 2s ease-in-out infinite; }
+@keyframes rotateHint {
+  0%, 100% { transform: rotate(0deg); }
+  40%       { transform: rotate(90deg); }
+  60%       { transform: rotate(90deg); }
+}
+.rotate-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  color: var(--spec);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.rotate-sub {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 18px;
+  color: rgba(245,239,224,0.55);
+}
+
+/* ── Overlay base ── */
 .overlay {
   position: absolute;
   inset: 0;
@@ -53,92 +103,68 @@ canvas {
 .overlay.active { pointer-events: all; }
 .hidden { display: none !important; }
 
-/* ── Buttons ───────────────────────────────────────────── */
+/* ── Buttons ── */
 .btn-primary {
-  background: var(--botanical);
-  color: var(--specimen);
+  background: var(--bot);
+  color: var(--spec);
   font-family: 'Baloo 2', sans-serif;
   font-weight: 600;
-  font-size: 16px;
+  font-size: 18px;
   border: none;
   border-radius: 6px;
-  padding: 12px 24px;
+  padding: 14px 28px;
   cursor: pointer;
-  transition: background 0s;
-  box-shadow: none;
+  -webkit-tap-highlight-color: transparent;
 }
-.btn-primary:hover  { background: #245840; }
-.btn-primary:active { box-shadow: 2px 2px 0 var(--ink); transform: translate(-2px,-2px); }
+.btn-primary:hover, .btn-primary:active { background: #245840; }
 
 .btn-secondary {
   background: transparent;
   color: var(--ink);
   font-family: 'Baloo 2', sans-serif;
   font-weight: 600;
-  font-size: 16px;
+  font-size: 18px;
   border: 2px solid var(--ink);
   border-radius: 6px;
-  padding: 10px 22px;
+  padding: 12px 26px;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
-.btn-secondary:hover  { background: var(--specimen); }
-.btn-secondary:active { box-shadow: 2px 2px 0 var(--ink); transform: translate(-2px,-2px); }
+.btn-secondary:hover, .btn-secondary:active { background: var(--spec); }
 
-.btn-specimen {
-  background: var(--specimen);
-  color: var(--ink);
-  font-family: 'Baloo 2', sans-serif;
-  font-weight: 600;
-  font-size: 16px;
-  border: 2px solid var(--ink);
-  border-radius: 6px;
-  padding: 10px 22px;
-  cursor: pointer;
-}
-.btn-specimen:hover  { background: #ede7d3; }
-.btn-specimen:active { box-shadow: 2px 2px 0 var(--ink); transform: translate(-2px,-2px); }
-
-/* ── Character Select ──────────────────────────────────── */
+/* ── Character Select ── */
 #char-select {
   background: var(--carto);
-  border-radius: 0;
   flex-direction: column;
-  gap: 0;
 }
 .cs-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 28px;
-  padding: 44px 60px;
+  gap: 24px;
+  padding: 36px 48px;
   width: 100%;
 }
 .cs-logo {
   font-family: 'Playfair Display', serif;
   font-weight: 700;
-  font-size: 52px;
-  color: var(--specimen);
+  font-size: clamp(32px, 5vw, 52px);
+  color: var(--spec);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  line-height: 1;
   text-align: center;
+  line-height: 1;
 }
 .cs-sub {
-  font-family: 'Baloo 2', sans-serif;
   font-size: 13px;
   font-weight: 600;
   color: var(--amber);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  margin-top: -20px;
+  margin-top: -16px;
 }
-.cs-rule {
-  width: 100%;
-  height: 1px;
-  background: rgba(245,239,224,0.2);
-}
+.cs-rule { width: 100%; height: 1px; background: rgba(245,239,224,0.2); }
 .cs-prompt {
-  font-family: 'Baloo 2', sans-serif;
   font-size: 13px;
   font-weight: 600;
   color: rgba(245,239,224,0.5);
@@ -147,76 +173,60 @@ canvas {
 }
 .cs-cards {
   display: flex;
-  gap: 24px;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 .cs-card {
-  background: var(--specimen);
+  background-color: var(--spec);
+  background-image: radial-gradient(circle, rgba(27,42,59,0.1) 1px, transparent 1px);
+  background-size: 12px 12px;
   border: 2px solid var(--ink);
   border-radius: 6px;
-  padding: 28px 32px;
+  padding: 24px 28px;
   cursor: pointer;
-  box-shadow: 4px 6px 0 rgba(27,42,59,0.35);
+  box-shadow: 4px 6px 0 rgba(27,42,59,0.3);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  min-width: 180px;
-  transition: transform 0.1s;
-  /* dot-grid texture */
-  background-image: radial-gradient(circle, rgba(27,42,59,0.12) 1px, transparent 1px);
-  background-size: 12px 12px;
-  background-color: var(--specimen);
+  gap: 8px;
+  min-width: 160px;
+  -webkit-tap-highlight-color: transparent;
 }
-.cs-card:hover { transform: translateY(-3px); }
-.cs-card.selected {
-  border-color: var(--amber);
-  box-shadow: 4px 6px 0 var(--amber);
-}
+.cs-card.selected { border-color: var(--amber); box-shadow: 4px 6px 0 var(--amber); }
 .cs-avatar {
-  width: 72px;
-  height: 72px;
+  width: 68px; height: 68px;
   border-radius: 50%;
   border: 2px solid var(--ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 36px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 34px;
 }
 .cs-name {
   font-family: 'Playfair Display', serif;
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 20px;
   color: var(--ink);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 .cs-age {
-  font-family: 'Baloo 2', sans-serif;
   font-size: 13px;
   font-weight: 600;
   color: rgba(27,42,59,0.5);
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
-.cs-btn-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
 
-/* ── Specimen Card ─────────────────────────────────────── */
-#spec-overlay {
-  background: rgba(27,42,59,0.7);
-}
+/* ── Specimen Card ── */
+#spec-overlay { background: rgba(27,42,59,0.75); }
 .spec-card {
-  background-color: var(--specimen);
+  background-color: var(--spec);
   background-image: radial-gradient(circle, rgba(27,42,59,0.1) 1px, transparent 1px);
   background-size: 12px 12px;
   border: 2px solid var(--ink);
   border-radius: 4px;
   box-shadow: 4px 6px 0 rgba(27,42,59,0.25);
-  width: 380px;
-  padding: 32px 36px 28px;
+  width: min(400px, 92vw);
+  padding: 28px 32px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -224,382 +234,191 @@ canvas {
   animation: cardReveal 200ms ease-out both;
 }
 @keyframes cardReveal {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity:0; transform: translateY(12px); }
+  to   { opacity:1; transform: translateY(0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .spec-card { animation: none; }
-  .postcard-wrap { animation: none; }
+  .spec-card, .postcard-wrap { animation: none; }
 }
-.spec-illustration {
-  font-size: 96px;
-  line-height: 1;
-  margin-bottom: 20px;
-}
-.spec-rule {
-  width: 100%;
-  height: 1.5px;
-  background: var(--ink);
-  margin: 12px 0;
-}
-.spec-name-row {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
+.spec-illustration { font-size: 88px; line-height: 1; margin-bottom: 16px; }
+.spec-rule { width:100%; height:1.5px; background:var(--ink); margin: 10px 0; }
+.spec-name-row { width:100%; display:flex; align-items:center; justify-content:space-between; }
 .spec-name {
   font-family: 'Playfair Display', serif;
-  font-weight: 700;
-  font-size: 22px;
+  font-size: 20px;
   color: var(--ink);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.spec-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.spec-dot.common { background: var(--botanical); }
+.spec-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.spec-dot.common { background: var(--bot); }
 .spec-dot.rare   { background: var(--red); }
 .spec-latin {
-  font-family: 'Baloo 2', sans-serif;
   font-size: 15px;
   font-weight: 400;
   font-style: italic;
-  color: rgba(27,42,59,0.55);
-  flex: 1;
+  color: rgba(27,42,59,0.5);
 }
 .spec-fact {
-  font-family: 'Baloo 2', sans-serif;
   font-size: 18px;
   font-weight: 400;
   color: var(--ink);
   line-height: 1.6;
-  text-align: left;
-  margin: 8px 0 20px;
+  margin: 8px 0 18px;
 }
-.spec-btn-row { display: flex; gap: 10px; width: 100%; justify-content: center; }
-
-/* Power badge inside spec card */
 .spec-power-badge {
   width: 100%;
-  background: var(--botanical);
+  background: var(--bot);
   border: 2px solid var(--ink);
   border-radius: 4px;
   padding: 10px 14px;
   display: flex;
-  align-items: flex-start;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   box-shadow: 2px 2px 0 var(--ink);
 }
 .spec-power-label {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--amber);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  line-height: 1.3;
 }
 .spec-power-name {
   font-family: 'Playfair Display', serif;
-  font-size: 16px;
-  color: var(--specimen);
+  font-size: 15px;
+  color: var(--spec);
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  margin-top: 2px;
 }
-.spec-power-desc {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 14px;
-  color: rgba(245,239,224,0.8);
-  line-height: 1.4;
-  margin-top: 3px;
-}
+.spec-power-desc { font-size: 14px; color: rgba(245,239,224,0.75); line-height: 1.4; }
 
-/* ── Journal ───────────────────────────────────────────── */
-#journal-overlay {
-  background: rgba(27,42,59,0.85);
-  flex-direction: column;
-  gap: 0;
-  overflow-y: auto;
-}
+/* ── Journal ── */
+#journal-overlay { background: rgba(27,42,59,0.88); flex-direction: column; }
 .journal-panel {
-  background-color: var(--specimen);
+  background-color: var(--spec);
   background-image: radial-gradient(circle, rgba(27,42,59,0.08) 1px, transparent 1px);
   background-size: 12px 12px;
-  background-color: var(--specimen);
   border: 2px solid var(--ink);
   border-radius: 4px;
   box-shadow: 4px 6px 0 rgba(27,42,59,0.25);
-  width: 820px;
-  max-height: 560px;
+  width: min(820px, 96vw);
+  max-height: 90vh;
   overflow-y: auto;
-  padding: 32px 36px 28px;
+  -webkit-overflow-scrolling: touch;
+  padding: 28px 32px 24px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
 }
 .journal-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   border-bottom: 1.5px solid var(--ink);
-  padding-bottom: 14px;
+  padding-bottom: 12px;
 }
 .journal-title {
   font-family: 'Playfair Display', serif;
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 26px;
   color: var(--ink);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.journal-count {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(27,42,59,0.5);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-.journal-section-label {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(27,42,59,0.5);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin-bottom: 8px;
-}
-.journal-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 12px;
-}
-.journal-item {
-  background: var(--specimen);
+.journal-count { font-size: 13px; font-weight: 600; color: rgba(27,42,59,0.45); letter-spacing: 0.1em; text-transform: uppercase; }
+.j-section-label { font-size: 13px; font-weight: 600; color: rgba(27,42,59,0.45); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; }
+.journal-powers { display:flex; gap:10px; flex-wrap:wrap; }
+.j-power-chip {
+  display: flex; align-items: flex-start; gap: 8px;
+  background: var(--bot);
   border: 2px solid var(--ink);
   border-radius: 4px;
-  padding: 12px;
-  box-shadow: 2px 3px 0 rgba(27,42,59,0.2);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-.journal-item.locked {
-  opacity: 0.35;
-  border-style: dashed;
-}
-.journal-item-emoji { font-size: 36px; line-height: 1; }
-.journal-item-name {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink);
-  text-align: center;
-  line-height: 1.2;
-}
-.journal-item-country {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 11px;
-  color: rgba(27,42,59,0.45);
-  text-align: center;
-}
-.journal-powers {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 12px 0 4px;
-}
-.journal-power-chip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--botanical);
-  border: 2px solid var(--ink);
-  border-radius: 4px;
-  padding: 6px 12px;
+  padding: 8px 12px;
   box-shadow: 2px 2px 0 var(--ink);
 }
-.journal-power-chip.locked {
-  background: transparent;
-  border-style: dashed;
-  opacity: 0.4;
+.j-power-chip.locked { background: transparent; border-style: dashed; opacity: 0.4; }
+.j-power-chip span:first-child { font-size: 18px; }
+.j-power-text { font-size: 13px; font-weight: 600; color: var(--spec); }
+.j-power-chip.locked .j-power-text { color: var(--ink); }
+.j-power-desc { font-size: 12px; color: rgba(245,239,224,0.65); line-height: 1.3; margin-top: 2px; }
+.journal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
 }
-.journal-power-chip span:first-child { font-size: 18px; }
-.journal-power-text {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--specimen);
+.journal-item {
+  background: var(--spec);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  padding: 12px 8px;
+  box-shadow: 2px 3px 0 rgba(27,42,59,0.18);
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
 }
-.journal-power-chip.locked .journal-power-text { color: var(--ink); }
+.journal-item.locked { opacity: 0.35; border-style: dashed; }
+.j-item-emoji { font-size: 34px; line-height: 1; }
+.j-item-name { font-size: 12px; font-weight: 600; color: var(--ink); text-align: center; line-height: 1.2; }
+.j-item-country { font-size: 11px; color: rgba(27,42,59,0.45); text-align: center; }
 
-/* ── Postcard Screen ───────────────────────────────────── */
-#postcard-overlay {
-  background: rgba(27,42,59,0.85);
-  flex-direction: column;
-  gap: 20px;
-}
+/* ── Postcard ── */
+#postcard-overlay { background: rgba(27,42,59,0.88); flex-direction: column; }
 .postcard-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  animation: postcardSlide 300ms ease-out both;
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  animation: pcSlide 300ms ease-out both;
+  width: min(720px, 96vw);
 }
-@keyframes postcardSlide {
-  from { opacity: 0; transform: translateX(40px); }
-  to   { opacity: 1; transform: translateX(0); }
+@keyframes pcSlide {
+  from { opacity:0; transform: translateX(40px); }
+  to   { opacity:1; transform: translateX(0); }
 }
 .postcard {
-  background: var(--specimen);
+  background: var(--spec);
   border: 2px solid var(--ink);
   border-radius: 4px;
   box-shadow: 4px 6px 0 rgba(27,42,59,0.3);
-  width: 720px;
   display: grid;
-  grid-template-columns: 1fr 220px;
+  grid-template-columns: 1fr 200px;
+  width: 100%;
 }
-.pc-left {
-  padding: 32px 28px;
-  border-right: 2px dashed rgba(27,42,59,0.3);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+@media (max-width: 600px) {
+  .postcard { grid-template-columns: 1fr; }
+  .pc-right { border-left: none !important; border-top: 2px dashed rgba(27,42,59,0.3); }
 }
-.pc-label {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(27,42,59,0.45);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-.pc-country {
-  font-family: 'Playfair Display', serif;
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--ink);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  line-height: 1;
-}
-.pc-rule { height: 1.5px; background: var(--ink); width: 100%; }
-.pc-message {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 18px;
-  font-weight: 400;
-  font-style: italic;
-  color: var(--ink);
-  line-height: 1.6;
-  flex: 1;
-}
+.pc-left { padding: 28px 24px; border-right: 2px dashed rgba(27,42,59,0.3); display:flex; flex-direction:column; gap:12px; }
+.pc-label { font-size: 13px; font-weight: 600; color: rgba(27,42,59,0.45); letter-spacing: 0.12em; text-transform: uppercase; }
+.pc-country { font-family: 'Playfair Display', serif; font-size: 28px; color: var(--ink); letter-spacing: 0.08em; text-transform: uppercase; }
+.pc-rule { height: 1.5px; background: var(--ink); }
+.pc-message { font-size: 18px; font-weight: 400; font-style: italic; color: var(--ink); line-height: 1.6; }
 .pc-right {
-  padding: 28px 20px;
+  padding: 24px 18px;
   background-image: radial-gradient(circle, rgba(27,42,59,0.08) 1px, transparent 1px);
   background-size: 12px 12px;
-  background-color: var(--specimen);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
+  background-color: var(--spec);
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
 }
 .pc-stamp {
-  width: 96px;
-  height: 96px;
-  border: 2px solid var(--red);
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 52px;
-  background: var(--specimen);
+  width: 90px; height: 90px;
+  border: 2px solid var(--red); border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 48px;
   box-shadow: 2px 2px 0 var(--red);
 }
-.pc-stamp-label {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--red);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  text-align: center;
-}
-.pc-rule-h { height: 1px; background: rgba(27,42,59,0.2); width: 100%; }
-.pc-to-label {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(27,42,59,0.45);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  align-self: flex-start;
-}
-.pc-to-names {
-  font-family: 'Playfair Display', serif;
-  font-size: 16px;
-  color: var(--ink);
-  align-self: flex-start;
-  line-height: 1.6;
-}
-.pc-collected {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(27,42,59,0.5);
-  text-align: center;
-  margin-top: auto;
-}
-.pc-btn-row { display: flex; gap: 10px; }
-
-/* ── Touch controls ────────────────────────────────────── */
-#touch-controls {
-  position: absolute;
-  bottom: 14px;
-  left: 0; right: 0;
-  display: none;
-  justify-content: space-between;
-  padding: 0 16px;
-  z-index: 5;
-  pointer-events: none;
-}
-#touch-controls.visible { display: flex; }
-.touch-group { display: flex; gap: 10px; }
-.t-btn {
-  width: 64px; height: 64px;
-  background: rgba(27,42,59,0.5);
-  border: 2px solid rgba(245,239,224,0.4);
-  border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 22px;
-  color: var(--specimen);
-  cursor: pointer;
-  pointer-events: all;
-  user-select: none; -webkit-user-select: none;
-}
-.t-btn:active { background: rgba(27,42,59,0.8); }
-
-/* ── HUD journal button (HTML overlay) ────────────────── */
-#hud-journal-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 5;
-  display: none;
-  pointer-events: all;
-}
-#hud-journal-btn.visible { display: block; }
+.pc-stamp-label { font-size: 11px; font-weight: 600; color: var(--red); letter-spacing: 0.1em; text-transform: uppercase; text-align: center; }
+.pc-divider { height: 1px; background: rgba(27,42,59,0.2); width: 100%; }
+.pc-to-label { font-size: 12px; font-weight: 600; color: rgba(27,42,59,0.4); letter-spacing: 0.08em; text-transform: uppercase; align-self: flex-start; }
+.pc-to-names { font-family: 'Playfair Display', serif; font-size: 15px; color: var(--ink); align-self: flex-start; line-height: 1.6; }
+.pc-collected { font-size: 13px; font-weight: 600; color: rgba(27,42,59,0.5); text-align: center; margin-top: auto; }
+.pc-btn-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 </style>
 </head>
 <body>
+
+<!-- ── Portrait warning ── -->
+<div id="rotate-msg">
+  <div class="rotate-icon">📱</div>
+  <div class="rotate-title">Rotate Your Device</div>
+  <div class="rotate-sub">World Explorer is best in landscape mode</div>
+</div>
+
 <div id="wrap">
   <canvas id="canvas" width="900" height="600"></canvas>
 
@@ -613,15 +432,13 @@ canvas {
       <div class="cs-rule"></div>
       <div class="cs-prompt">Choose your explorer</div>
       <div class="cs-cards" id="cs-cards"></div>
-      <div class="cs-btn-row">
-        <button class="btn-primary" id="btn-start" disabled onclick="startGame()">Begin Expedition</button>
-      </div>
+      <button class="btn-primary" id="btn-start" disabled onclick="startGame()">Begin Expedition</button>
     </div>
   </div>
 
-  <!-- ── Specimen Card Popup ── -->
+  <!-- ── Specimen Card ── -->
   <div class="overlay hidden" id="spec-overlay">
-    <div class="spec-card" id="spec-card">
+    <div class="spec-card">
       <div class="spec-illustration" id="spec-emoji"></div>
       <div class="spec-rule"></div>
       <div class="spec-name-row">
@@ -640,35 +457,33 @@ canvas {
           <div class="spec-power-desc" id="spec-power-desc"></div>
         </div>
       </div>
-      <div class="spec-btn-row">
-        <button class="btn-primary" onclick="dismissCard()">Nice!</button>
-      </div>
+      <button class="btn-primary" onclick="dismissCard()" style="width:100%">Nice! ✓</button>
     </div>
   </div>
 
   <!-- ── Journal ── -->
   <div class="overlay hidden" id="journal-overlay">
-    <div class="journal-panel" id="journal-panel">
+    <div class="journal-panel">
       <div class="journal-header">
         <span class="journal-title">Field Journal</span>
         <span class="journal-count" id="journal-count"></span>
       </div>
       <div>
-        <div class="journal-section-label">Powers</div>
+        <div class="j-section-label">Powers</div>
         <div class="journal-powers" id="journal-powers"></div>
       </div>
-      <div class="journal-section-label" id="journal-coll-label">Specimens</div>
-      <div class="journal-grid" id="journal-grid"></div>
-      <div style="display:flex;gap:10px;justify-content:center;padding-top:8px;">
-        <button class="btn-secondary" onclick="closeJournal()">Close Journal</button>
+      <div>
+        <div class="j-section-label">Specimens</div>
+        <div class="journal-grid" id="journal-grid"></div>
       </div>
+      <button class="btn-secondary" onclick="closeJournal()" style="align-self:center">Close Journal</button>
     </div>
   </div>
 
   <!-- ── Postcard ── -->
   <div class="overlay hidden" id="postcard-overlay">
     <div class="postcard-wrap">
-      <div class="postcard" id="postcard-card">
+      <div class="postcard">
         <div class="pc-left">
           <div class="pc-label">Greetings from</div>
           <div class="pc-country" id="pc-country"></div>
@@ -678,10 +493,10 @@ canvas {
         <div class="pc-right">
           <div class="pc-stamp" id="pc-stamp"></div>
           <div class="pc-stamp-label">World<br>Explorer</div>
-          <div class="pc-rule-h"></div>
+          <div class="pc-divider"></div>
           <div class="pc-to-label">To:</div>
           <div class="pc-to-names" id="pc-to"></div>
-          <div class="pc-rule-h"></div>
+          <div class="pc-divider"></div>
           <div class="pc-collected" id="pc-collected"></div>
         </div>
       </div>
@@ -691,22 +506,7 @@ canvas {
       </div>
     </div>
   </div>
-
-  <!-- ── Touch Controls ── -->
-  <div id="touch-controls">
-    <div class="touch-group">
-      <div class="t-btn" id="t-left">◀</div>
-      <div class="t-btn" id="t-right">▶</div>
-    </div>
-    <div class="touch-group">
-      <div class="t-btn" id="t-dash">Z</div>
-      <div class="t-btn" id="t-jump">▲</div>
-    </div>
-  </div>
-
-  <!-- ── HUD Journal Button ── -->
-  <button class="btn-specimen" id="hud-journal-btn" onclick="openJournal()" style="font-size:13px;padding:8px 14px;">📖 Journal</button>
-</div>
+</div><!-- #wrap -->
 
 <script src="data/levels.js"></script>
 <script src="data/characters.js"></script>
@@ -717,15 +517,10 @@ canvas {
 //  CONSTANTS
 // ═══════════════════════════════════════════════════════
 const C = {
-  ink:    '#1B2A3B',
-  bot:    '#2D6A4F',
-  carto:  '#1A3A5C',
-  spec:   '#F5EFE0',
-  amber:  '#D4874A',
-  red:    '#C0392B',
-  ink85:  'rgba(27,42,59,0.85)',
-  ink60:  'rgba(27,42,59,0.6)',
-  spec20: 'rgba(245,239,224,0.2)',
+  ink:   '#1B2A3B',  bot:   '#2D6A4F',
+  carto: '#1A3A5C',  spec:  '#F5EFE0',
+  amber: '#D4874A',  red:   '#C0392B',
+  ink85: 'rgba(27,42,59,0.85)',
 };
 
 const W = 900, H = 600;
@@ -733,36 +528,23 @@ const GROUND_Y = H - 88;
 const LEVEL_W  = 2100;
 const GRAVITY  = 0.52;
 
-// Theme palettes (only from the 6 colors)
 const THEMES = {
-  forest: {
-    skyTop:    '#1A3A5C',
-    skyBot:    '#2D6A4F',
-    groundTop: '#1a3d2b',
-    groundBot: '#13291c',
-    platFill:  '#D4874A',
-    platEdge:  '#1B2A3B',
-    grassLine: '#2D6A4F',
-  },
-  coastal: {
-    skyTop:    '#1A3A5C',
-    skyBot:    '#2b4f6e',
-    groundTop: '#1B2A3B',
-    groundBot: '#111e2a',
-    platFill:  '#D4874A',
-    platEdge:  '#1B2A3B',
-    grassLine: '#D4874A',
-  },
-  tropical: {
-    skyTop:    '#1A3A5C',
-    skyBot:    '#2D6A4F',
-    groundTop: '#2D6A4F',
-    groundBot: '#1a3d2b',
-    platFill:  '#1B2A3B',
-    platEdge:  '#D4874A',
-    grassLine: '#D4874A',
-  }
+  forest:  { skyTop:'#1A3A5C', skyBot:'#2D6A4F', groundTop:'#1a3d2b', groundBot:'#13291c', platFill:'#D4874A', platEdge:'#1B2A3B', grassLine:'#2D6A4F' },
+  coastal: { skyTop:'#1A3A5C', skyBot:'#2b4f6e', groundTop:'#1B2A3B', groundBot:'#111e2a', platFill:'#D4874A', platEdge:'#1B2A3B', grassLine:'#D4874A' },
+  tropical:{ skyTop:'#1A3A5C', skyBot:'#2D6A4F', groundTop:'#2D6A4F', groundBot:'#1a3d2b', platFill:'#1B2A3B', platEdge:'#D4874A', grassLine:'#D4874A' },
 };
+
+// ── Touch control zones (canvas coords 900×600) ──
+// Positioned so controls don't cover the level's interesting area
+const ZONES = {
+  left:    { x:16,   y:H-108, w:108, h:94 },
+  right:   { x:134,  y:H-108, w:108, h:94 },
+  jump:    { x:W-260, y:H-118, w:130, h:108 }, // biggest — primary action
+  dash:    { x:W-120, y:H-108, w:108, h:94 },
+  journal: { x:W-128, y:10,   w:120, h:38 },   // tappable HUD area
+};
+
+const isMobile = 'ontouchstart' in window;
 
 // ═══════════════════════════════════════════════════════
 //  STATE
@@ -770,38 +552,34 @@ const THEMES = {
 const canvas = document.getElementById('canvas');
 const ctx    = canvas.getContext('2d');
 
-let appState = 'charselect'; // charselect | map | level | popup | journal | postcard
-let charIdx  = null;
+let appState  = 'charselect';
+let charIdx   = null;
 let activeLvl = null;
-let pendingCard = null;
-let prevState = null; // where journal was opened from
+let prevState = null;
 
-// Map
-let mapPulse  = 0;
-let mapHover  = null;
+let mapPulse = 0;
+let mapHover = null;
 
-// Level
-let platforms     = [];
-let collectibles  = [];
-let postcardX     = 0;
-let levelTime     = 0;
-let hudPulse      = 0; // counter bounce
+let platforms    = [];
+let collectibles = [];
+let postcardX    = 0;
+let levelTime    = 0;
+let hudPulse     = 1;
 
-// Player
 const player = {
-  x: 80, y: 400, w: 34, h: 48,
-  vx: 0, vy: 0,
-  onGround: false, facing: 1,
-  extraJumps: 0,  // for double jump power
-  dashCooldown: 0,
-  animFrame: 0, animTimer: 0,
+  x:80, y:400, w:34, h:48,
+  vx:0, vy:0,
+  onGround:false, facing:1,
+  extraJumps:0, dashCooldown:0,
+  animFrame:0, animTimer:0,
 };
 
-// Input
-const keys = {};
-const touch = { left: false, right: false, jump: false, dash: false };
-let jumpWasUp  = true;
-let dashWasUp  = true;
+// ── Input ──
+const keys  = {};
+const touch = { left:false, right:false, jump:false, dash:false };
+const activeTouches = new Map(); // id → {x,y}
+let jumpWasUp = true;
+let dashWasUp = true;
 let camX = 0;
 
 // ═══════════════════════════════════════════════════════
@@ -815,52 +593,38 @@ function writeSave(d) { localStorage.setItem('worldExplorer', JSON.stringify(d))
 
 function getCharSave(cid) {
   const s = loadSave();
-  if (!s[cid]) s[cid] = { collected: {}, powers: [] };
+  if (!s[cid]) s[cid] = { collected:{}, powers:[] };
   return s[cid];
 }
-
 function markCollected(cid, lid, iid) {
   const s = loadSave();
-  if (!s[cid]) s[cid] = { collected: {}, powers: [] };
+  if (!s[cid]) s[cid] = { collected:{}, powers:[] };
   if (!s[cid].collected[lid]) s[cid].collected[lid] = [];
   if (!s[cid].collected[lid].includes(iid)) s[cid].collected[lid].push(iid);
   writeSave(s);
 }
-
 function isCollected(cid, lid, iid) {
-  const cs = getCharSave(cid);
-  return (cs.collected[lid] || []).includes(iid);
+  return (getCharSave(cid).collected[lid] || []).includes(iid);
 }
-
 function unlockPower(cid, pid) {
   const s = loadSave();
-  if (!s[cid]) s[cid] = { collected: {}, powers: [] };
+  if (!s[cid]) s[cid] = { collected:{}, powers:[] };
   if (!s[cid].powers.includes(pid)) s[cid].powers.push(pid);
   writeSave(s);
 }
+function getPowers(cid) { return getCharSave(cid).powers || []; }
 
-function getPowers(cid) {
-  return getCharSave(cid).powers || [];
-}
-
-function hasPower(pid) {
-  if (!charIdx === null) return false;
-  return getPowers(CHARACTERS[charIdx].id).includes(pid);
-}
-
-// All possible powers across all levels
 function allPowerDefs() {
   const seen = {};
   LEVELS.forEach(l => l.collectibles.forEach(c => {
-    if (c.power && !seen[c.power]) {
-      seen[c.power] = { id: c.power, name: c.powerName, desc: c.powerDesc, emoji: c.powerEmoji };
-    }
+    if (c.power && !seen[c.power])
+      seen[c.power] = { id:c.power, name:c.powerName, desc:c.powerDesc, emoji:c.powerEmoji };
   }));
   return Object.values(seen);
 }
 
 // ═══════════════════════════════════════════════════════
-//  CHARACTER SELECT UI
+//  CHARACTER SELECT
 // ═══════════════════════════════════════════════════════
 function buildCharSelect() {
   const wrap = document.getElementById('cs-cards');
@@ -870,16 +634,13 @@ function buildCharSelect() {
     div.className = 'cs-card';
     div.innerHTML = `
       <div class="cs-avatar" style="background:${c.bodyColor}22">
-        <span style="font-size:38px">${i === 0 ? '👦' : '🧒'}</span>
+        <span style="font-size:34px">${i===0?'👦':'🧒'}</span>
       </div>
       <div class="cs-name" style="color:${c.bodyColor}">${c.name}</div>
       <div class="cs-age">Age ${c.age}</div>
     `;
     div.onclick = () => {
-      document.querySelectorAll('.cs-card').forEach(el => {
-        el.classList.remove('selected');
-        el.style.borderColor = '';
-      });
+      document.querySelectorAll('.cs-card').forEach(el => { el.classList.remove('selected'); });
       div.classList.add('selected');
       charIdx = i;
       document.getElementById('btn-start').disabled = false;
@@ -900,418 +661,294 @@ function startGame() {
 // ═══════════════════════════════════════════════════════
 function drawMap() {
   mapPulse += 1/60;
-  ctx.clearRect(0, 0, W, H);
+  ctx.clearRect(0,0,W,H);
 
-  // Base: Cartographic
+  // Cartographic base
   ctx.fillStyle = C.carto;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0,0,W,H);
 
-  // Subtle grid
+  // Grid
   ctx.strokeStyle = 'rgba(245,239,224,0.06)';
   ctx.lineWidth = 1;
-  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
-  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  for (let x=0; x<W; x+=40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y=0; y<H; y+=40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
 
-  // Latitude arcs (cartographic feel)
+  // Latitude arcs
   ctx.strokeStyle = 'rgba(245,239,224,0.04)';
-  ctx.lineWidth = 1;
-  for (let i = 1; i < 5; i++) {
-    ctx.beginPath();
-    ctx.ellipse(W/2, H*0.5, W*0.45*i/3, H*0.4*i/3, 0, 0, Math.PI*2);
-    ctx.stroke();
+  for (let i=1; i<5; i++) {
+    ctx.beginPath(); ctx.ellipse(W/2,H*0.5, W*0.15*i, H*0.13*i, 0,0,Math.PI*2); ctx.stroke();
   }
 
-  // Continents
   drawMapContinents();
 
   // Country pins
   LEVELS.forEach((lvl, i) => {
-    const px = lvl.mapPosition.x / 100 * W;
-    const py = lvl.mapPosition.y / 100 * H;
-    const hover = mapHover === i;
-    const char  = CHARACTERS[charIdx];
-    const ageF  = String(char.age);
-    const items = lvl.collectibles.filter(c => c.forAge === 'both' || c.forAge === ageF);
-    const gotN  = items.filter(c => isCollected(char.id, lvl.id, c.id)).length;
+    const px = lvl.mapPosition.x/100*W, py = lvl.mapPosition.y/100*H;
+    const hover = mapHover===i;
+    const char = CHARACTERS[charIdx];
+    const items = lvl.collectibles.filter(c => c.forAge==='both' || c.forAge===String(char.age));
 
     if (lvl.unlocked) {
-      // Amber glow pulse (candlelight — 3s loop)
-      const pulse = 0.12 + 0.06 * Math.sin(mapPulse * (Math.PI*2/3) + i);
-      ctx.beginPath();
-      ctx.arc(px, py, 28, 0, Math.PI*2);
-      ctx.fillStyle = `rgba(212,135,74,${hover ? pulse*2.2 : pulse})`;
+      // Amber candlelight pulse — 3s loop
+      const pulse = 0.12 + 0.06*Math.sin(mapPulse*(Math.PI*2/3)+i);
+      ctx.beginPath(); ctx.arc(px,py,30,0,Math.PI*2);
+      ctx.fillStyle = `rgba(212,135,74,${hover?pulse*2.5:pulse})`;
       ctx.fill();
     }
 
-    // Pin background
-    ctx.beginPath();
-    ctx.arc(px, py, 16, 0, Math.PI*2);
-    ctx.fillStyle = lvl.unlocked ? C.spec : C.ink;
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(px,py,17,0,Math.PI*2);
+    ctx.fillStyle = lvl.unlocked ? C.spec : C.ink; ctx.fill();
     ctx.strokeStyle = lvl.unlocked ? C.amber : 'rgba(245,239,224,0.2)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    ctx.lineWidth = 2; ctx.stroke();
 
-    // Emoji / lock
-    ctx.font = '16px serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.font = '15px serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(lvl.unlocked ? lvl.emoji : '🔒', px, py);
 
-    // Country label
-    ctx.font = `700 ${hover ? 13 : 11}px 'Playfair Display', serif`;
-    ctx.textAlign = 'center';
+    ctx.font = `700 ${hover?13:11}px 'Playfair Display',serif`;
     ctx.textBaseline = 'top';
     ctx.fillStyle = lvl.unlocked ? C.spec : 'rgba(245,239,224,0.3)';
-    ctx.shadowColor = C.ink;
-    ctx.shadowBlur = 4;
-    ctx.fillText(lvl.name.toUpperCase(), px, py + 22);
+    ctx.shadowColor = C.ink; ctx.shadowBlur = 4;
+    ctx.fillText(lvl.name.toUpperCase(), px, py+23);
     ctx.shadowBlur = 0;
 
     // Progress dots
-    if (lvl.unlocked && items.length > 0) {
-      const dotW = items.length * 8 + (items.length-1) * 4;
-      const startX = px - dotW/2;
-      items.forEach((item, j) => {
-        const got = isCollected(char.id, lvl.id, item.id);
-        ctx.beginPath();
-        ctx.arc(startX + j*12, py + 36, 3, 0, Math.PI*2);
-        ctx.fillStyle = got ? C.amber : 'rgba(245,239,224,0.2)';
+    if (lvl.unlocked) {
+      const dotTotalW = items.length*12 - 4;
+      items.forEach((it,j) => {
+        ctx.beginPath(); ctx.arc(px - dotTotalW/2 + j*12, py+38, 3.5, 0, Math.PI*2);
+        ctx.fillStyle = isCollected(char.id,lvl.id,it.id) ? C.amber : 'rgba(245,239,224,0.2)';
         ctx.fill();
       });
     }
   });
 
-  // Compass rose (top-right)
-  drawCompassRose(W - 68, 68, 44);
+  drawCompassRose(W-70, 70, 46);
 
-  // Logo
-  ctx.font = "700 30px 'Playfair Display', serif";
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
+  // Header
+  ctx.font = "700 26px 'Playfair Display',serif";
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
   ctx.fillStyle = C.spec;
-  ctx.letterSpacing = '0.08em';
-  ctx.fillText('WORLD EXPLORER', 20, 18);
-  ctx.font = "600 12px 'Baloo 2', sans-serif";
+  ctx.fillText('WORLD EXPLORER', 18, 16);
+  ctx.font = "600 12px 'Baloo 2',sans-serif";
   ctx.fillStyle = C.amber;
-  ctx.fillText('A LIVING EXPEDITION', 20, 50);
+  ctx.fillText('A LIVING EXPEDITION', 18, 46);
 
-  // Bottom bar
-  ctx.fillStyle = C.ink85;
-  ctx.fillRect(0, H-38, W, 38);
+  // Bottom info bar
   const char = CHARACTERS[charIdx];
-  ctx.font = "600 13px 'Baloo 2', sans-serif";
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
+  ctx.fillStyle = C.ink85;
+  ctx.fillRect(0, H-36, W, 36);
+  ctx.font = "600 13px 'Baloo 2',sans-serif";
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.fillStyle = C.amber;
-  ctx.fillText(`Explorer: ${char.name}`, 16, H-19);
-  // Total collected
-  let total = 0, possible = 0;
+  ctx.fillText(`Explorer: ${char.name}`, 14, H-18);
+  let tot=0, pos=0;
   const ageF = String(char.age);
   LEVELS.forEach(l => {
-    const items = l.collectibles.filter(c => c.forAge === 'both' || c.forAge === ageF);
-    possible += items.length;
-    total += items.filter(c => isCollected(char.id, l.id, c.id)).length;
+    const its = l.collectibles.filter(c=>c.forAge==='both'||c.forAge===ageF);
+    pos += its.length;
+    tot += its.filter(c=>isCollected(char.id,l.id,c.id)).length;
   });
-  ctx.textAlign = 'center';
-  ctx.fillStyle = C.spec;
-  ctx.fillText(`${total} / ${possible} specimens collected`, W/2, H-19);
-  // Powers
-  const powers = getPowers(char.id);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = C.amber;
-  ctx.fillText(`Powers: ${powers.length}`, W-16, H-19);
+  ctx.textAlign = 'center'; ctx.fillStyle = C.spec;
+  ctx.fillText(`${tot} / ${pos} specimens`, W/2, H-18);
+  ctx.textAlign = 'right'; ctx.fillStyle = C.amber;
+  ctx.fillText(`Powers: ${getPowers(char.id).length}`, W-14, H-18);
 
-  // Journal button on map
+  // Journal tap zone (drawn on canvas so touch works)
   ctx.fillStyle = C.ink85;
-  roundRect(ctx, W-120, 14, 104, 32, 6);
+  roundRect(ctx, ZONES.journal.x, ZONES.journal.y, ZONES.journal.w, ZONES.journal.h, 6);
   ctx.fill();
-  ctx.strokeStyle = `rgba(245,239,224,0.3)`;
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(245,239,224,0.25)'; ctx.lineWidth = 1;
   ctx.stroke();
-  ctx.font = "600 13px 'Baloo 2', sans-serif";
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = C.spec;
-  ctx.fillText('📖  Journal', W-68, 30);
+  ctx.font = "600 13px 'Baloo 2',sans-serif";
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = C.spec;
+  ctx.fillText('📖  Journal', ZONES.journal.x + ZONES.journal.w/2, ZONES.journal.y + ZONES.journal.h/2);
 }
 
 function drawMapContinents() {
   ctx.fillStyle = C.bot;
-
   // North America
   ctx.beginPath();
-  ctx.moveTo(55, 115); ctx.bezierCurveTo(55,90, 100,80, 130,85);
-  ctx.bezierCurveTo(185,78, 210,95, 220,115);
-  ctx.bezierCurveTo(230,155, 215,195, 200,240);
-  ctx.bezierCurveTo(185,265, 165,275, 150,285);
-  ctx.bezierCurveTo(135,295, 120,285, 110,275);
-  ctx.bezierCurveTo(80,255, 55,220, 50,175);
+  ctx.moveTo(55,115); ctx.bezierCurveTo(55,90,100,80,130,85);
+  ctx.bezierCurveTo(185,78,210,95,220,115); ctx.bezierCurveTo(230,155,215,195,200,240);
+  ctx.bezierCurveTo(185,265,165,275,150,285); ctx.bezierCurveTo(120,285,80,255,50,175);
   ctx.closePath(); ctx.fill();
-
   // South America
   ctx.beginPath();
-  ctx.moveTo(130, 300); ctx.bezierCurveTo(145,290, 175,295, 185,310);
-  ctx.bezierCurveTo(210,340, 215,390, 205,430);
-  ctx.bezierCurveTo(195,460, 175,475, 155,470);
-  ctx.bezierCurveTo(125,460, 110,430, 108,400);
-  ctx.bezierCurveTo(105,360, 115,320, 130,300);
+  ctx.moveTo(130,300); ctx.bezierCurveTo(145,290,175,295,185,310);
+  ctx.bezierCurveTo(210,340,215,390,205,430); ctx.bezierCurveTo(195,460,175,475,155,470);
+  ctx.bezierCurveTo(125,460,110,430,108,400); ctx.bezierCurveTo(105,360,115,320,130,300);
   ctx.closePath(); ctx.fill();
-
   // Europe
   ctx.beginPath();
-  ctx.moveTo(420, 100); ctx.bezierCurveTo(435,88, 465,85, 490,92);
-  ctx.bezierCurveTo(510,98, 520,110, 515,130);
-  ctx.bezierCurveTo(510,150, 495,165, 475,170);
-  ctx.bezierCurveTo(455,175, 435,168, 425,155);
-  ctx.bezierCurveTo(412,140, 408,115, 420,100);
+  ctx.moveTo(420,100); ctx.bezierCurveTo(435,88,465,85,490,92);
+  ctx.bezierCurveTo(510,98,520,110,515,130); ctx.bezierCurveTo(510,150,495,165,475,170);
+  ctx.bezierCurveTo(455,175,435,168,425,155); ctx.bezierCurveTo(412,140,408,115,420,100);
   ctx.closePath(); ctx.fill();
-
   // Africa
   ctx.beginPath();
-  ctx.moveTo(428, 185); ctx.bezierCurveTo(455,178, 510,180, 530,198);
-  ctx.bezierCurveTo(550,218, 548,255, 540,295);
-  ctx.bezierCurveTo(528,340, 505,380, 490,408);
-  ctx.bezierCurveTo(475,430, 455,438, 440,430);
-  ctx.bezierCurveTo(415,415, 400,385, 398,345);
-  ctx.bezierCurveTo(393,295, 400,240, 410,210);
-  ctx.bezierCurveTo(415,198, 420,188, 428,185);
+  ctx.moveTo(428,185); ctx.bezierCurveTo(455,178,510,180,530,198);
+  ctx.bezierCurveTo(550,218,548,255,540,295); ctx.bezierCurveTo(528,340,505,380,490,408);
+  ctx.bezierCurveTo(475,430,455,438,440,430); ctx.bezierCurveTo(415,415,400,385,398,345);
+  ctx.bezierCurveTo(393,295,400,240,410,210); ctx.bezierCurveTo(415,198,420,188,428,185);
   ctx.closePath(); ctx.fill();
-
   // Asia
   ctx.beginPath();
-  ctx.moveTo(525, 80); ctx.bezierCurveTo(560,65, 640,60, 700,72);
-  ctx.bezierCurveTo(755,82, 790,100, 810,120);
-  ctx.bezierCurveTo(825,140, 820,175, 800,200);
-  ctx.bezierCurveTo(775,230, 740,250, 700,258);
-  ctx.bezierCurveTo(660,265, 620,250, 595,235);
-  ctx.bezierCurveTo(565,215, 540,185, 530,155);
-  ctx.bezierCurveTo(518,125, 515,92, 525,80);
+  ctx.moveTo(525,80); ctx.bezierCurveTo(560,65,640,60,700,72);
+  ctx.bezierCurveTo(755,82,790,100,810,120); ctx.bezierCurveTo(825,140,820,175,800,200);
+  ctx.bezierCurveTo(775,230,740,250,700,258); ctx.bezierCurveTo(660,265,620,250,595,235);
+  ctx.bezierCurveTo(565,215,540,185,530,155); ctx.bezierCurveTo(518,125,515,92,525,80);
   ctx.closePath(); ctx.fill();
-
   // Oceania
   ctx.beginPath();
-  ctx.moveTo(680, 375); ctx.bezierCurveTo(705,362, 750,365, 780,380);
-  ctx.bezierCurveTo(808,395, 818,420, 808,445);
-  ctx.bezierCurveTo(795,468, 765,478, 740,472);
-  ctx.bezierCurveTo(710,464, 688,442, 680,415);
-  ctx.bezierCurveTo(672,395, 672,382, 680,375);
+  ctx.moveTo(680,375); ctx.bezierCurveTo(705,362,750,365,780,380);
+  ctx.bezierCurveTo(808,395,818,420,808,445); ctx.bezierCurveTo(795,468,765,478,740,472);
+  ctx.bezierCurveTo(710,464,688,442,680,415); ctx.bezierCurveTo(672,395,672,382,680,375);
   ctx.closePath(); ctx.fill();
 }
 
-function drawCompassRose(cx, cy, r) {
-  ctx.save();
-  ctx.translate(cx, cy);
-
-  // Outer ring
+function drawCompassRose(cx,cy,r) {
+  ctx.save(); ctx.translate(cx,cy);
   ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2);
-  ctx.strokeStyle = 'rgba(245,239,224,0.2)'; ctx.lineWidth = 1; ctx.stroke();
-
-  // Arms
-  const dirs = [[0,-r],[0,r],[-r,0],[r,0]];
-  dirs.forEach(([dx,dy]) => {
+  ctx.strokeStyle='rgba(245,239,224,0.18)'; ctx.lineWidth=1; ctx.stroke();
+  [[0,-r],[0,r],[-r,0],[r,0]].forEach(([dx,dy])=>{
     ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(dx,dy);
-    ctx.strokeStyle = 'rgba(245,239,224,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.strokeStyle='rgba(245,239,224,0.3)'; ctx.lineWidth=1.5; ctx.stroke();
   });
-
-  // Arrowheads N/S/E/W
-  ctx.fillStyle = C.spec;
-  ctx.globalAlpha = 0.6;
-  // N (top, larger)
+  ctx.fillStyle=C.spec; ctx.globalAlpha=0.7;
   ctx.beginPath(); ctx.moveTo(0,-r); ctx.lineTo(-6,-r+18); ctx.lineTo(6,-r+18); ctx.closePath(); ctx.fill();
-  ctx.globalAlpha = 0.3;
-  ctx.beginPath(); ctx.moveTo(0,r); ctx.lineTo(-4,r-12); ctx.lineTo(4,r-12); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(-r,0); ctx.lineTo(-r+12,-4); ctx.lineTo(-r+12,4); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(r,0); ctx.lineTo(r-12,-4); ctx.lineTo(r-12,4); ctx.closePath(); ctx.fill();
-
-  // N label
-  ctx.globalAlpha = 0.7;
-  ctx.font = "600 11px 'Baloo 2', sans-serif";
-  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-  ctx.fillStyle = C.spec;
-  ctx.fillText('N', 0, -r - 6);
-
-  ctx.globalAlpha = 1;
-  ctx.restore();
+  ctx.globalAlpha=0.3;
+  [[0,r,-4,r-12,4,r-12],[-r,0,-r+12,-4,-r+12,4],[r,0,r-12,-4,r-12,4]].forEach(([x,y,x2,y2,x3,y3])=>{
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x2,y2); ctx.lineTo(x3,y3); ctx.closePath(); ctx.fill();
+  });
+  ctx.globalAlpha=0.7; ctx.fillStyle=C.spec;
+  ctx.font="600 11px 'Baloo 2',sans-serif"; ctx.textAlign='center'; ctx.textBaseline='bottom';
+  ctx.fillText('N',0,-r-5);
+  ctx.globalAlpha=1; ctx.restore();
 }
 
-function mapClick(mx, my) {
-  // Journal button
-  if (mx >= W-120 && mx <= W-16 && my >= 14 && my <= 46) {
-    openJournal(); return;
-  }
-  if (appState !== 'map') return;
-  LEVELS.forEach((lvl, i) => {
+function mapClick(mx,my) {
+  if (inZone(mx,my,ZONES.journal)) { openJournal(); return; }
+  if (appState!=='map') return;
+  LEVELS.forEach(lvl => {
     if (!lvl.unlocked) return;
-    const px = lvl.mapPosition.x/100*W, py = lvl.mapPosition.y/100*H;
-    if (Math.hypot(mx-px, my-py) < 22) enterLevel(lvl);
+    const px=lvl.mapPosition.x/100*W, py=lvl.mapPosition.y/100*H;
+    if (Math.hypot(mx-px,my-py)<24) enterLevel(lvl);
   });
 }
-
-function mapMove(mx, my) {
-  if (appState !== 'map') return;
+function mapMove(mx,my) {
+  if (appState!=='map') return;
   mapHover = null;
-  LEVELS.forEach((lvl, i) => {
+  LEVELS.forEach((lvl,i)=>{
     if (!lvl.unlocked) return;
-    const px = lvl.mapPosition.x/100*W, py = lvl.mapPosition.y/100*H;
-    if (Math.hypot(mx-px, my-py) < 26) { mapHover = i; canvas.style.cursor = 'pointer'; }
+    const px=lvl.mapPosition.x/100*W, py=lvl.mapPosition.y/100*H;
+    if (Math.hypot(mx-px,my-py)<28) { mapHover=i; canvas.style.cursor='pointer'; }
   });
-  if (mapHover === null) canvas.style.cursor = 'default';
+  if (mapHover===null) canvas.style.cursor='default';
 }
 
 // ═══════════════════════════════════════════════════════
 //  LEVEL SETUP
 // ═══════════════════════════════════════════════════════
 function enterLevel(lvl) {
-  activeLvl = lvl;
-  appState  = 'level';
-  levelTime = 0;
-  camX      = 0;
-  hudPulse  = 0;
+  activeLvl=lvl; appState='level'; levelTime=0; camX=0; hudPulse=1;
+  player.x=80; player.y=GROUND_Y-player.h;
+  player.vx=player.vy=0; player.onGround=false; player.facing=1;
+  player.extraJumps=0; player.dashCooldown=0;
 
-  player.x = 80; player.y = GROUND_Y - player.h;
-  player.vx = player.vy = 0;
-  player.onGround = false; player.facing = 1;
-  player.extraJumps = 0;
-  player.dashCooldown = 0;
+  const char=CHARACTERS[charIdx];
+  const powers=getPowers(char.id);
+  if (powers.includes('double_jump')) player.extraJumps=1;
 
-  // Apply powers
-  const char = CHARACTERS[charIdx];
-  const powers = getPowers(char.id);
-  if (powers.includes('double_jump')) player.extraJumps = 1;
-
-  const ageF = String(char.age);
+  const ageF=String(char.age);
   collectibles = lvl.collectibles
-    .filter(c => c.forAge === 'both' || c.forAge === ageF)
-    .map(c => ({
-      ...c,
-      bobOffset: Math.random() * Math.PI * 2,
-      collectedNow: false,
-    }));
+    .filter(c=>c.forAge==='both'||c.forAge===ageF)
+    .map(c=>({ ...c, worldY:c.y, bobOffset:Math.random()*Math.PI*2, collectedNow:false }));
 
-  platforms   = buildPlatforms();
-  postcardX   = LEVEL_W - 120;
-
-  if ('ontouchstart' in window) document.getElementById('touch-controls').classList.add('visible');
-  document.getElementById('hud-journal-btn').classList.add('visible');
+  platforms  = buildPlatforms();
+  postcardX  = LEVEL_W-120;
 }
 
 function buildPlatforms() {
-  const ground = { x:0, y:GROUND_Y, w:LEVEL_W, h:92, isGround:true };
-  const floating = [
-    { x:220,  y:GROUND_Y-105, w:140 },
-    { x:400,  y:GROUND_Y-170, w:120 },
-    { x:570,  y:GROUND_Y-105, w:150 },
-    { x:740,  y:GROUND_Y-210, w:110 },
-    { x:910,  y:GROUND_Y-140, w:130 },
-    { x:1060, y:GROUND_Y-85,  w:145 },
-    { x:1210, y:GROUND_Y-175, w:115 },
-    { x:1380, y:GROUND_Y-115, w:135 },
-    { x:1540, y:GROUND_Y-210, w:120 },
-    { x:1700, y:GROUND_Y-145, w:145 },
-    { x:1870, y:GROUND_Y-90,  w:130 },
-    { x:2010, y:GROUND_Y-160, w:110 },
-  ].map(p => ({ ...p, h:14, isGround:false }));
-  return [ground, ...floating];
+  const g = { x:0, y:GROUND_Y, w:LEVEL_W, h:92, isGround:true };
+  return [g, ...[
+    {x:220,y:GROUND_Y-105,w:140},{x:400,y:GROUND_Y-170,w:120},
+    {x:570,y:GROUND_Y-105,w:150},{x:740,y:GROUND_Y-210,w:110},
+    {x:910,y:GROUND_Y-140,w:130},{x:1060,y:GROUND_Y-85,w:145},
+    {x:1210,y:GROUND_Y-175,w:115},{x:1380,y:GROUND_Y-115,w:135},
+    {x:1540,y:GROUND_Y-210,w:120},{x:1700,y:GROUND_Y-145,w:145},
+    {x:1870,y:GROUND_Y-90,w:130},{x:2010,y:GROUND_Y-160,w:110},
+  ].map(p=>({ ...p, h:14, isGround:false }))];
 }
 
 // ═══════════════════════════════════════════════════════
 //  LEVEL PHYSICS
 // ═══════════════════════════════════════════════════════
 function updateLevel() {
-  if (appState !== 'level') return;
+  if (appState!=='level') return;
   levelTime += 1/60;
 
-  const char   = CHARACTERS[charIdx];
-  const speed  = char.speed;
-  const jumpH  = char.jumpHeight;
-  const powers = getPowers(char.id);
+  const char  = CHARACTERS[charIdx];
+  const speed = char.speed;
+  const jumpH = char.jumpHeight;
+  const powers= getPowers(char.id);
 
-  const goLeft  = keys['ArrowLeft']  || keys['a'] || touch.left;
-  const goRight = keys['ArrowRight'] || keys['d'] || touch.right;
-  const goJump  = keys['ArrowUp'] || keys[' '] || keys['w'] || touch.jump;
-  const goDash  = keys['Shift'] || keys['z'] || keys['Z'] || touch.dash;
+  const goL = keys['ArrowLeft']  || keys['a'] || touch.left;
+  const goR = keys['ArrowRight'] || keys['d'] || touch.right;
+  const goJ = keys['ArrowUp'] || keys[' '] || keys['w'] || touch.jump;
+  const goD = keys['Shift'] || keys['z'] || keys['Z'] || touch.dash;
 
-  // Horizontal
-  player.vx = goRight ? speed : goLeft ? -speed : 0;
-  if (player.vx !== 0) player.facing = player.vx > 0 ? 1 : -1;
+  player.vx = goR ? speed : goL ? -speed : 0;
+  if (player.vx!==0) player.facing = player.vx>0 ? 1 : -1;
 
-  // Dash
-  if (powers.includes('dash') && goDash && dashWasUp && player.dashCooldown <= 0) {
+  if (powers.includes('dash') && goD && dashWasUp && player.dashCooldown<=0) {
     player.vx = player.facing * speed * 4.5;
     player.dashCooldown = 55;
   }
-  dashWasUp = !goDash;
-  if (player.dashCooldown > 0) player.dashCooldown--;
+  dashWasUp = !goD;
+  if (player.dashCooldown>0) player.dashCooldown--;
 
-  // Jump
-  if (goJump && jumpWasUp) {
+  if (goJ && jumpWasUp) {
     if (player.onGround) {
-      player.vy = -jumpH;
-      player.onGround = false;
-    } else if (powers.includes('double_jump') && player.extraJumps > 0) {
-      player.vy = -jumpH * 0.82;
-      player.extraJumps--;
+      player.vy = -jumpH; player.onGround = false;
+    } else if (powers.includes('double_jump') && player.extraJumps>0) {
+      player.vy = -jumpH*0.82; player.extraJumps--;
     }
   }
-  jumpWasUp = !goJump;
+  jumpWasUp = !goJ;
 
-  // Glide: hold jump while falling
-  if (powers.includes('glide') && goJump && !player.onGround && player.vy > 0) {
+  if (powers.includes('glide') && goJ && !player.onGround && player.vy>0)
     player.vy = Math.min(player.vy, 2.2);
-  }
 
-  // Gravity
-  player.vy = Math.min(player.vy + GRAVITY, 20);
-
-  // Move
+  player.vy = Math.min(player.vy+GRAVITY, 20);
   player.x += player.vx;
   player.y += player.vy;
 
-  // Bounds
-  if (player.x < 0) player.x = 0;
-  if (player.x > LEVEL_W - player.w) player.x = LEVEL_W - player.w;
+  if (player.x<0) player.x=0;
+  if (player.x>LEVEL_W-player.w) player.x=LEVEL_W-player.w;
 
-  // Platform collisions
   player.onGround = false;
   platforms.forEach(p => {
-    const prevBot = player.y + player.h - player.vy;
-    const curBot  = player.y + player.h;
-    const inX = player.x + player.w > p.x + 4 && player.x < p.x + p.w - 4;
-    if (inX && prevBot <= p.y && curBot >= p.y && player.vy >= 0) {
-      player.y = p.y - player.h;
-      player.vy = 0;
-      player.onGround = true;
-      if (powers.includes('double_jump')) player.extraJumps = 1;
+    const prevBot = player.y+player.h-player.vy;
+    const curBot  = player.y+player.h;
+    const inX = player.x+player.w > p.x+4 && player.x < p.x+p.w-4;
+    if (inX && prevBot<=p.y && curBot>=p.y && player.vy>=0) {
+      player.y = p.y-player.h; player.vy=0; player.onGround=true;
+      if (powers.includes('double_jump')) player.extraJumps=1;
     }
   });
 
-  // Collectible hits
   collectibles.forEach(col => {
     if (col.collectedNow || isCollected(CHARACTERS[charIdx].id, activeLvl.id, col.id)) return;
-    if (Math.hypot(player.x + player.w/2 - col.x, player.y + player.h/2 - col.worldY) < 50) {
-      triggerCard(col);
-    }
+    if (Math.hypot(player.x+player.w/2-col.x, player.y+player.h/2-col.worldY) < 52) triggerCard(col);
   });
 
-  // Postcard trigger
-  if (player.x + player.w >= postcardX - 6) triggerPostcard();
+  if (player.x+player.w >= postcardX-6) triggerPostcard();
 
-  // Camera
-  camX = Math.max(0, Math.min(player.x - W*0.3, LEVEL_W - W));
-
-  // Player animation
+  camX = Math.max(0, Math.min(player.x-W*0.3, LEVEL_W-W));
   player.animTimer++;
-  if (player.animTimer > 7) { player.animTimer = 0; player.animFrame = (player.animFrame+1)%4; }
-
-  // HUD pulse decay
-  if (hudPulse > 1) hudPulse -= (hudPulse - 1) * 0.12;
-}
-
-// Snap collectibles to nearby platform heights at init
-// (worldY is read from the data; we just alias it here)
-function initCollectibleY(col) {
-  col.worldY = col.y;
+  if (player.animTimer>7) { player.animTimer=0; player.animFrame=(player.animFrame+1)%4; }
+  if (hudPulse>1) hudPulse -= (hudPulse-1)*0.12;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1321,591 +958,424 @@ function drawLevel() {
   if (!activeLvl) return;
   const T = THEMES[activeLvl.theme] || THEMES.forest;
 
-  // Sky (gradient is an environment, not a UI gradient)
-  const sky = ctx.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0, T.skyTop);
-  sky.addColorStop(0.65, T.skyBot);
-  sky.addColorStop(1, T.groundTop);
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, W, H);
+  // Sky
+  const sky = ctx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0, T.skyTop); sky.addColorStop(0.65,T.skyBot); sky.addColorStop(1,T.groundTop);
+  ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
 
-  // Far mountains / hills (parallax 0.08)
-  const p1 = camX * 0.08;
-  ctx.fillStyle = adjustColor(T.skyTop, -8);
-  for (let i = 0; i < 9; i++) {
-    const mx = (i * 270 - p1 % 270 + 270) % (W + 270) - 135;
-    const mh = 70 + (i % 4) * 30;
-    drawMountain(mx, GROUND_Y - mh, 180, mh);
+  // Far hills
+  ctx.fillStyle = adjustColor(T.skyTop,-8);
+  for (let i=0;i<9;i++) {
+    const mx = (i*270 - (camX*0.08)%270 + 270)%(W+270) - 135;
+    drawMountain(mx, GROUND_Y-(70+(i%4)*30), 180, 70+(i%4)*30);
   }
-
-  // Mid trees (parallax 0.3)
-  const p2 = camX * 0.3;
-  for (let i = 0; i < 22; i++) {
-    const tx = (i * 100 - p2 % 100 + 100) % (W + 100) - 50;
+  // Clouds
+  ctx.fillStyle='rgba(245,239,224,0.1)';
+  for (let i=0;i<6;i++) {
+    const cx=(i*200-(camX*0.18)%200+200)%(W+200)-100;
+    drawCloud(cx, 55+(i%3)*28, 55+(i%2)*20);
+  }
+  // Trees
+  for (let i=0;i<22;i++) {
+    const tx=(i*100-(camX*0.3)%100+100)%(W+100)-50;
     drawTree(tx, GROUND_Y, T, activeLvl.theme);
   }
 
-  // Clouds (parallax 0.18)
-  const p3 = camX * 0.18;
-  ctx.fillStyle = 'rgba(245,239,224,0.12)';
-  for (let i = 0; i < 6; i++) {
-    const cx = (i * 200 - p3 % 200 + 200) % (W + 200) - 100;
-    const cy = 55 + (i%3)*28;
-    drawCloud(cx, cy, 55 + (i%2)*20);
-  }
-
   // Platforms
-  platforms.forEach(p => drawPlatform(p, T));
+  platforms.forEach(p => drawPlatform(p,T));
 
   // Collectibles
   collectibles.forEach(col => {
-    if (!col.worldY) initCollectibleY(col);
-    const sx = col.x - camX;
-    const bob = Math.sin(levelTime * (Math.PI) + col.bobOffset) * 4;
-    const sy  = col.worldY - 30 + bob;
-    const charId = CHARACTERS[charIdx].id;
-    const done = col.collectedNow || isCollected(charId, activeLvl.id, col.id);
+    const sx = col.x-camX;
+    const bob = Math.sin(levelTime*Math.PI+col.bobOffset)*4;
+    const sy  = col.worldY-30+bob;
+    const done = col.collectedNow || isCollected(CHARACTERS[charIdx].id, activeLvl.id, col.id);
+    if (sx < -60 || sx > W+60) return;
 
     if (done) {
-      ctx.globalAlpha = 0.2;
-      ctx.font = '28px serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.globalAlpha=0.2;
+      ctx.font='28px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillText(col.emoji, sx, sy);
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha=1;
     } else {
-      // Amber glow
-      const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, 32);
-      g.addColorStop(0, 'rgba(212,135,74,0.35)');
-      g.addColorStop(1, 'rgba(212,135,74,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(sx, sy, 32, 0, Math.PI*2); ctx.fill();
-
-      ctx.font = '36px serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.shadowColor = C.amber;
-      ctx.shadowBlur = 10;
+      const g=ctx.createRadialGradient(sx,sy,0,sx,sy,32);
+      g.addColorStop(0,'rgba(212,135,74,0.3)'); g.addColorStop(1,'rgba(212,135,74,0)');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(sx,sy,32,0,Math.PI*2); ctx.fill();
+      ctx.shadowColor=C.amber; ctx.shadowBlur=10;
+      ctx.font='36px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillText(col.emoji, sx, sy);
-      ctx.shadowBlur = 0;
-
-      // Rare: tiny red dot above
+      ctx.shadowBlur=0;
       if (col.rare) {
-        ctx.beginPath();
-        ctx.arc(sx + 14, sy - 16, 5, 0, Math.PI*2);
-        ctx.fillStyle = C.red;
-        ctx.fill();
-        ctx.strokeStyle = C.ink;
-        ctx.lineWidth = 1;
-        ctx.stroke();
+        ctx.beginPath(); ctx.arc(sx+14,sy-16,5,0,Math.PI*2);
+        ctx.fillStyle=C.red; ctx.fill();
+        ctx.strokeStyle=C.ink; ctx.lineWidth=1; ctx.stroke();
       }
     }
   });
 
-  // Postcard destination marker
   drawPostcardMarker();
-
-  // Player
   drawPlayer();
-
-  // HUD
   drawHUD();
+  if (isMobile) drawTouchControls();
 }
 
-function drawPlatform(p, T) {
-  const sx = p.x - camX, sw = p.w;
-  if (sx + sw < -10 || sx > W + 10) return;
-
+function drawPlatform(p,T) {
+  const sx=p.x-camX, sw=p.w;
+  if (sx+sw<-10||sx>W+10) return;
   if (p.isGround) {
-    ctx.fillStyle = T.groundTop;
-    ctx.fillRect(sx, p.y, sw, p.h);
-    // Grass/surface stripe
-    ctx.fillStyle = T.grassLine;
-    ctx.fillRect(sx, p.y, sw, 8);
+    ctx.fillStyle=T.groundTop; ctx.fillRect(sx,p.y,sw,p.h);
+    ctx.fillStyle=T.grassLine; ctx.fillRect(sx,p.y,sw,8);
   } else {
-    // Plank platform
-    ctx.fillStyle = T.platFill;
-    roundRect(ctx, sx, p.y, sw, p.h, 3);
-    ctx.fill();
-    // Plank lines (grain texture)
-    ctx.strokeStyle = T.platEdge;
-    ctx.lineWidth = 1;
-    ctx.globalAlpha = 0.3;
-    for (let i = 1; i < 4; i++) {
-      const lx = sx + sw * i / 4;
-      ctx.beginPath(); ctx.moveTo(lx, p.y+2); ctx.lineTo(lx, p.y+p.h-2); ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-    // Top highlight
-    ctx.fillStyle = 'rgba(245,239,224,0.15)';
-    ctx.fillRect(sx+4, p.y+2, sw-8, 3);
-    // Ink outline
-    ctx.strokeStyle = T.platEdge;
-    ctx.lineWidth = 1.5;
-    roundRect(ctx, sx, p.y, sw, p.h, 3);
-    ctx.stroke();
+    ctx.fillStyle=T.platFill;
+    roundRect(ctx,sx,p.y,sw,p.h,3); ctx.fill();
+    ctx.strokeStyle=T.platEdge; ctx.lineWidth=1; ctx.globalAlpha=0.3;
+    for(let i=1;i<4;i++){const lx=sx+sw*i/4;ctx.beginPath();ctx.moveTo(lx,p.y+2);ctx.lineTo(lx,p.y+p.h-2);ctx.stroke();}
+    ctx.globalAlpha=1;
+    ctx.fillStyle='rgba(245,239,224,0.15)'; ctx.fillRect(sx+4,p.y+2,sw-8,3);
+    ctx.strokeStyle=T.platEdge; ctx.lineWidth=1.5;
+    roundRect(ctx,sx,p.y,sw,p.h,3); ctx.stroke();
   }
 }
 
-function drawMountain(x, y, w, h) {
+function drawMountain(x,y,w,h) {
+  ctx.beginPath(); ctx.moveTo(x-w*.5,y+h); ctx.lineTo(x,y); ctx.lineTo(x+w*.5,y+h); ctx.closePath(); ctx.fill();
+}
+function drawCloud(x,y,r) {
   ctx.beginPath();
-  ctx.moveTo(x - w*0.5, y+h);
-  ctx.lineTo(x, y);
-  ctx.lineTo(x + w*0.5, y+h);
-  ctx.closePath();
+  ctx.arc(x,y,r*.55,0,Math.PI*2); ctx.arc(x+r*.45,y-r*.15,r*.38,0,Math.PI*2); ctx.arc(x-r*.38,y+r*.08,r*.32,0,Math.PI*2);
   ctx.fill();
 }
-
-function drawCloud(x, y, r) {
-  ctx.beginPath();
-  ctx.arc(x, y, r*0.55, 0, Math.PI*2);
-  ctx.arc(x + r*0.45, y-r*0.15, r*0.38, 0, Math.PI*2);
-  ctx.arc(x - r*0.38, y+r*0.08, r*0.32, 0, Math.PI*2);
-  ctx.fill();
+function drawTree(x,y,T,theme) {
+  ctx.fillStyle=adjustColor(T.groundTop,-15); ctx.fillRect(x-3,y-30,6,30);
+  ctx.fillStyle=theme==='coastal'?C.carto:T.grassLine;
+  ctx.beginPath();ctx.arc(x,y-40,18,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(x-11,y-30,12,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(x+11,y-30,12,0,Math.PI*2);ctx.fill();
 }
-
-function drawTree(x, y, T, theme) {
-  ctx.fillStyle = adjustColor(T.groundTop, -15);
-  ctx.fillRect(x - 3, y - 30, 6, 30);
-  const canopy = theme === 'coastal' ? C.carto : T.grassLine;
-  ctx.fillStyle = canopy;
-  ctx.beginPath(); ctx.arc(x, y-40, 18, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(x-11, y-30, 12, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(x+11, y-30, 12, 0, Math.PI*2); ctx.fill();
-}
-
 function drawPostcardMarker() {
-  const sx = postcardX - camX;
-  if (sx < -60 || sx > W + 60) return;
-  const bob = Math.sin(levelTime * 1.8) * 4;
-
-  // Post
-  ctx.fillStyle = C.ink;
-  ctx.fillRect(sx - 3, GROUND_Y - 70, 6, 70);
-
-  // Box
-  ctx.fillStyle = C.spec;
-  ctx.strokeStyle = C.ink;
-  ctx.lineWidth = 2;
-  roundRect(ctx, sx - 22, GROUND_Y - 72 + bob, 44, 32, 4);
-  ctx.fill(); ctx.stroke();
-
-  ctx.font = '20px serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('📬', sx, GROUND_Y - 58 + bob);
-
-  // Label
-  ctx.font = "700 11px 'Playfair Display', serif";
-  ctx.fillStyle = C.amber;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'bottom';
-  ctx.fillText('FINISH', sx, GROUND_Y - 76 + bob);
+  const sx=postcardX-camX;
+  if (sx<-60||sx>W+60) return;
+  const bob=Math.sin(levelTime*1.8)*4;
+  ctx.fillStyle=C.ink; ctx.fillRect(sx-3,GROUND_Y-70,6,70);
+  ctx.fillStyle=C.spec; ctx.strokeStyle=C.ink; ctx.lineWidth=2;
+  roundRect(ctx,sx-22,GROUND_Y-72+bob,44,32,4); ctx.fill(); ctx.stroke();
+  ctx.font='20px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('📬',sx,GROUND_Y-58+bob);
+  ctx.font="700 11px 'Playfair Display',serif"; ctx.fillStyle=C.amber;
+  ctx.textBaseline='bottom'; ctx.fillText('FINISH',sx,GROUND_Y-76+bob);
 }
 
 function drawPlayer() {
-  const char = CHARACTERS[charIdx];
-  const sx = player.x - camX;
-  const sy = player.y;
-  const w  = player.w, h = player.h;
-  const powers = getPowers(char.id);
-
+  const char=CHARACTERS[charIdx];
+  const sx=player.x-camX, sy=player.y, w=player.w, h=player.h;
+  const powers=getPowers(char.id);
   ctx.save();
-  if (player.facing === -1) {
-    ctx.translate(sx + w/2, 0);
-    ctx.scale(-1, 1);
-    ctx.translate(-(sx + w/2), 0);
-  }
+  if (player.facing===-1) { ctx.translate(sx+w/2,0); ctx.scale(-1,1); ctx.translate(-(sx+w/2),0); }
 
   // Shadow
-  ctx.fillStyle = 'rgba(27,42,59,0.25)';
-  ctx.beginPath();
-  ctx.ellipse(sx + w/2, GROUND_Y + 4, w*0.45, 5, 0, 0, Math.PI*2);
-  ctx.fill();
+  ctx.fillStyle='rgba(27,42,59,0.22)';
+  ctx.beginPath(); ctx.ellipse(sx+w/2,GROUND_Y+4,w*.45,5,0,0,Math.PI*2); ctx.fill();
 
   // Dash trail
-  if (player.dashCooldown > 40) {
-    ctx.globalAlpha = (player.dashCooldown - 40) / 15 * 0.3;
-    ctx.fillStyle = C.amber;
-    roundRect(ctx, sx - (player.facing * 12) + 4, sy + h*0.3, w - 8, h*0.55, 4);
-    ctx.fill();
-    ctx.globalAlpha = 1;
+  if (player.dashCooldown>40) {
+    ctx.globalAlpha=(player.dashCooldown-40)/15*.28;
+    ctx.fillStyle=C.amber;
+    roundRect(ctx,sx-player.facing*10+4,sy+h*.3,w-8,h*.55,4); ctx.fill();
+    ctx.globalAlpha=1;
   }
-
   // Body
-  ctx.fillStyle = char.bodyColor;
-  roundRect(ctx, sx + 4, sy + h*0.38, w - 8, h*0.58, 4);
-  ctx.fill();
-  ctx.strokeStyle = C.ink;
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
+  ctx.fillStyle=char.bodyColor;
+  roundRect(ctx,sx+4,sy+h*.38,w-8,h*.58,4); ctx.fill();
+  ctx.strokeStyle=C.ink; ctx.lineWidth=1.5; ctx.stroke();
   // Legs
-  const swing = player.onGround ? Math.sin(levelTime * 9) * 6 : 0;
-  ctx.fillStyle = adjustColor(C.ink, 20);
-  roundRect(ctx, sx + 5, sy + h*0.84, 10, h*0.18, 3); ctx.fill();
-  roundRect(ctx, sx + w - 15, sy + h*0.84, 10, h*0.18, 3); ctx.fill();
-
+  ctx.fillStyle=adjustColor(C.ink,20);
+  roundRect(ctx,sx+5,sy+h*.84,10,h*.18,3); ctx.fill();
+  roundRect(ctx,sx+w-15,sy+h*.84,10,h*.18,3); ctx.fill();
   // Head
-  ctx.fillStyle = '#E8B98A';
-  ctx.beginPath();
-  ctx.ellipse(sx + w/2, sy + h*0.26, 13, 13, 0, 0, Math.PI*2);
-  ctx.fill();
-  ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.stroke();
-
+  ctx.fillStyle='#E8B98A';
+  ctx.beginPath(); ctx.ellipse(sx+w/2,sy+h*.26,13,13,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle=C.ink; ctx.lineWidth=1.5; ctx.stroke();
   // Hat
-  ctx.fillStyle = char.hatColor;
-  roundRect(ctx, sx + w/2 - 13, sy + h*0.13, 26, 10, 3); ctx.fill();
-  ctx.fillRect(sx + w/2 - 8, sy + h*0.04, 16, 11);
-  ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.stroke();
-  roundRect(ctx, sx + w/2 - 13, sy + h*0.13, 26, 10, 3); ctx.stroke();
-
+  ctx.fillStyle=char.hatColor;
+  roundRect(ctx,sx+w/2-13,sy+h*.13,26,10,3); ctx.fill();
+  ctx.fillRect(sx+w/2-8,sy+h*.04,16,11);
+  ctx.strokeStyle=C.ink; ctx.lineWidth=1;
+  roundRect(ctx,sx+w/2-13,sy+h*.13,26,10,3); ctx.stroke();
   // Eye
-  ctx.fillStyle = C.ink;
-  ctx.beginPath();
-  ctx.arc(sx + w/2 + 5, sy + h*0.25, 2.5, 0, Math.PI*2);
-  ctx.fill();
-
-  // Glide visual: arms out
-  if (powers.includes('glide') && !player.onGround && player.vy > 0 && (keys['ArrowUp'] || keys[' '] || touch.jump)) {
-    ctx.strokeStyle = char.bodyColor;
-    ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(sx+4, sy+h*0.5); ctx.lineTo(sx-12, sy+h*0.38); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(sx+w-4, sy+h*0.5); ctx.lineTo(sx+w+12, sy+h*0.38); ctx.stroke();
+  ctx.fillStyle=C.ink;
+  ctx.beginPath(); ctx.arc(sx+w/2+5,sy+h*.25,2.5,0,Math.PI*2); ctx.fill();
+  // Glide arms
+  if (powers.includes('glide') && !player.onGround && player.vy>0 && (keys['ArrowUp']||keys[' ']||touch.jump)) {
+    ctx.strokeStyle=char.bodyColor; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(sx+4,sy+h*.5); ctx.lineTo(sx-14,sy+h*.38); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sx+w-4,sy+h*.5); ctx.lineTo(sx+w+14,sy+h*.38); ctx.stroke();
   }
-
   ctx.restore();
 
-  // Name tag
-  ctx.font = "600 12px 'Baloo 2', sans-serif";
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'bottom';
-  ctx.fillStyle = C.spec;
-  ctx.shadowColor = C.ink;
-  ctx.shadowBlur = 3;
-  ctx.fillText(char.name, sx + w/2, sy - 4);
-  ctx.shadowBlur = 0;
+  ctx.font="600 12px 'Baloo 2',sans-serif"; ctx.textAlign='center'; ctx.textBaseline='bottom';
+  ctx.fillStyle=C.spec; ctx.shadowColor=C.ink; ctx.shadowBlur=3;
+  ctx.fillText(char.name, sx+w/2, sy-4);
+  ctx.shadowBlur=0;
 }
 
 function drawHUD() {
-  const char   = CHARACTERS[charIdx];
-  const charId = char.id;
-  const ageF   = String(char.age);
-  const items  = activeLvl.collectibles.filter(c => c.forAge === 'both' || c.forAge === ageF);
-  const got    = items.filter(c => c.collectedNow || isCollected(charId, activeLvl.id, c.id)).length;
-  const powers = getPowers(charId);
+  const char=CHARACTERS[charIdx], charId=char.id;
+  const items=activeLvl.collectibles.filter(c=>c.forAge==='both'||c.forAge===String(char.age));
+  const got=items.filter(c=>c.collectedNow||isCollected(charId,activeLvl.id,c.id)).length;
+  const powers=getPowers(charId);
 
-  // Ink panel — left
-  ctx.fillStyle = C.ink85;
-  roundRect(ctx, 10, 10, 210, 54, 6);
-  ctx.fill();
-
-  // Specimen counter (with scale bounce)
-  const scale = hudPulse;
+  // Collected panel
+  ctx.fillStyle=C.ink85;
+  roundRect(ctx,10,10,200,52,6); ctx.fill();
   ctx.save();
-  ctx.translate(115, 37);
-  ctx.scale(scale, scale);
-  ctx.translate(-115, -37);
-  ctx.font = "600 14px 'Baloo 2', sans-serif";
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = C.amber;
-  ctx.fillText(`🔬 ${got} / ${items.length} specimens`, 20, 30);
+  const s=hudPulse;
+  ctx.translate(110,36); ctx.scale(s,s); ctx.translate(-110,-36);
+  ctx.font="600 14px 'Baloo 2',sans-serif"; ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillStyle=C.amber; ctx.fillText(`🔬 ${got} / ${items.length} specimens`,18,28);
   ctx.restore();
-
-  // Specimen dots
-  items.forEach((col, i) => {
-    const done = col.collectedNow || isCollected(charId, activeLvl.id, col.id);
-    ctx.beginPath();
-    ctx.arc(20 + i * 16, 52, 5, 0, Math.PI*2);
-    ctx.fillStyle = done ? (col.rare ? C.red : C.bot) : 'rgba(245,239,224,0.2)';
-    ctx.fill();
-    ctx.strokeStyle = C.ink;
-    ctx.lineWidth = 1;
-    ctx.stroke();
+  items.forEach((col,i)=>{
+    const done=col.collectedNow||isCollected(charId,activeLvl.id,col.id);
+    ctx.beginPath(); ctx.arc(20+i*16,52,5,0,Math.PI*2);
+    ctx.fillStyle=done?(col.rare?C.red:C.bot):'rgba(245,239,224,0.2)';
+    ctx.fill(); ctx.strokeStyle=C.ink; ctx.lineWidth=1; ctx.stroke();
   });
 
-  // Power badges — right side
-  if (powers.length > 0) {
-    ctx.fillStyle = C.ink85;
-    const pw = powers.length * 38 + 16;
-    roundRect(ctx, W - pw - 10, 10, pw, 44, 6);
-    ctx.fill();
-
-    powers.forEach((pid, i) => {
-      const pDef = allPowerDefs().find(p => p.id === pid);
-      if (!pDef) return;
-      ctx.font = '20px serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(pDef.emoji, W - pw + 10 + i * 38 + 12, 32);
+  // Power badges
+  if (powers.length>0) {
+    const pw=powers.length*36+14;
+    ctx.fillStyle=C.ink85;
+    roundRect(ctx,W-pw-10,10,pw,40,6); ctx.fill();
+    powers.forEach((pid,i)=>{
+      const pd=allPowerDefs().find(p=>p.id===pid);
+      if(!pd) return;
+      ctx.font='18px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(pd.emoji, W-pw+10+i*36+12, 30);
     });
   }
 
-  // Country name — center top
-  ctx.fillStyle = C.ink85;
-  roundRect(ctx, W/2 - 90, 10, 180, 36, 6);
-  ctx.fill();
-  ctx.font = "700 14px 'Playfair Display', serif";
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = C.spec;
-  ctx.letterSpacing = '0.06em';
-  ctx.fillText(activeLvl.name.toUpperCase(), W/2, 28);
-  ctx.letterSpacing = '';
+  // Country name
+  ctx.fillStyle=C.ink85;
+  roundRect(ctx,W/2-84,10,168,34,6); ctx.fill();
+  ctx.font="700 13px 'Playfair Display',serif"; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle=C.spec;
+  ctx.fillText(activeLvl.name.toUpperCase(), W/2, 27);
 
-  // Progress bar — bottom
-  const bx = 10, by = H-18, bw = W-20, bh = 7;
-  ctx.fillStyle = C.ink85;
-  roundRect(ctx, bx-2, by-2, bw+4, bh+4, 4);
-  ctx.fill();
-  const prog = player.x / (LEVEL_W - player.w);
-  ctx.fillStyle = C.bot;
-  roundRect(ctx, bx, by, bw * prog, bh, 3);
-  ctx.fill();
-  // Player pip
-  ctx.beginPath();
-  ctx.arc(bx + bw * prog, by + bh/2, 6, 0, Math.PI*2);
-  ctx.fillStyle = char.bodyColor;
-  ctx.fill();
-  ctx.strokeStyle = C.ink;
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
+  // Journal tap area (visible on canvas)
+  ctx.fillStyle=C.ink85;
+  roundRect(ctx, ZONES.journal.x, ZONES.journal.y, ZONES.journal.w, ZONES.journal.h, 6); ctx.fill();
+  ctx.strokeStyle='rgba(245,239,224,0.25)'; ctx.lineWidth=1; ctx.stroke();
+  ctx.font="600 12px 'Baloo 2',sans-serif"; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle=C.spec;
+  ctx.fillText('📖  Journal', ZONES.journal.x+ZONES.journal.w/2, ZONES.journal.y+ZONES.journal.h/2);
+
+  // Progress bar
+  ctx.fillStyle=C.ink85; roundRect(ctx,10,H-18,W-20,8,4); ctx.fill();
+  const prog=player.x/(LEVEL_W-player.w);
+  ctx.fillStyle=C.bot; roundRect(ctx,10,H-18,(W-20)*prog,8,3); ctx.fill();
+  ctx.beginPath(); ctx.arc(10+(W-20)*prog,H-14,7,0,Math.PI*2);
+  ctx.fillStyle=char.bodyColor; ctx.fill();
+  ctx.strokeStyle=C.ink; ctx.lineWidth=1.5; ctx.stroke();
+}
+
+// ── Canvas-drawn touch controls ──
+function drawTouchControls() {
+  const powers=getPowers(CHARACTERS[charIdx].id);
+  // Subtle panel behind controls
+  ctx.fillStyle='rgba(27,42,59,0.3)';
+  ctx.fillRect(0, H-118, W, 118);
+
+  drawCtrlBtn(ZONES.left,  '◀', touch.left,  false);
+  drawCtrlBtn(ZONES.right, '▶', touch.right, false);
+  drawCtrlBtn(ZONES.jump,  '↑', touch.jump,  true);   // big primary
+  if (powers.includes('dash'))
+    drawCtrlBtn(ZONES.dash, '⚡', touch.dash, false);
+}
+
+function drawCtrlBtn(z, label, pressed, large) {
+  ctx.fillStyle = pressed ? 'rgba(245,239,224,0.22)' : 'rgba(245,239,224,0.08)';
+  ctx.strokeStyle = pressed ? C.amber : 'rgba(245,239,224,0.28)';
+  ctx.lineWidth = pressed ? 2 : 1.5;
+  roundRect(ctx, z.x, z.y, z.w, z.h, 6);
+  ctx.fill(); ctx.stroke();
+  ctx.font = `${large?34:26}px 'Baloo 2',sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle = pressed ? C.amber : 'rgba(245,239,224,0.65)';
+  ctx.fillText(label, z.x+z.w/2, z.y+z.h/2);
 }
 
 // ═══════════════════════════════════════════════════════
 //  SPECIMEN CARD
 // ═══════════════════════════════════════════════════════
 function triggerCard(col) {
-  if (appState !== 'level') return;
-  appState = 'popup';
-  col.collectedNow = true;
-  pendingCard = col;
-
-  const charId = CHARACTERS[charIdx].id;
+  if (appState!=='level') return;
+  appState='popup'; col.collectedNow=true; hudPulse=1.18;
+  const charId=CHARACTERS[charIdx].id;
   markCollected(charId, activeLvl.id, col.id);
-
-  // Update HUD pulse
-  hudPulse = 1.18;
-
-  // Fill card
   document.getElementById('spec-emoji').textContent = col.emoji;
   document.getElementById('spec-name').textContent  = col.name.toUpperCase();
-  document.getElementById('spec-latin').textContent = col.latinName || '';
+  document.getElementById('spec-latin').textContent = col.latinName||'';
   document.getElementById('spec-fact').textContent  = col.fact;
-  const dot = document.getElementById('spec-dot');
-  dot.className = 'spec-dot ' + (col.rare ? 'rare' : 'common');
-
-  // Power unlock
-  const pwrEl = document.getElementById('spec-power');
+  document.getElementById('spec-dot').className     = 'spec-dot '+(col.rare?'rare':'common');
+  const pwrEl=document.getElementById('spec-power');
   if (col.power) {
-    const wasUnlocked = getPowers(charId).includes(col.power);
     unlockPower(charId, col.power);
-    // Show power section (even on replay — it's a reminder)
     document.getElementById('spec-power-name').textContent = col.powerName.toUpperCase();
     document.getElementById('spec-power-desc').textContent = col.powerDesc;
     pwrEl.classList.remove('hidden');
-    // Apply immediately
-    if (col.power === 'double_jump') player.extraJumps = Math.max(player.extraJumps, 1);
-  } else {
-    pwrEl.classList.add('hidden');
-  }
-
-  // Re-trigger card animation
-  const card = document.getElementById('spec-card');
-  card.style.animation = 'none';
-  card.offsetHeight;
-  card.style.animation = '';
-
+    if (col.power==='double_jump') player.extraJumps=Math.max(player.extraJumps,1);
+  } else { pwrEl.classList.add('hidden'); }
+  const card=document.querySelector('.spec-card');
+  card.style.animation='none'; card.offsetHeight; card.style.animation='';
   show('spec-overlay');
 }
-
-function dismissCard() {
-  hide('spec-overlay');
-  appState = 'level';
-  pendingCard = null;
-}
+function dismissCard() { hide('spec-overlay'); appState='level'; }
 
 // ═══════════════════════════════════════════════════════
 //  JOURNAL
 // ═══════════════════════════════════════════════════════
 function openJournal() {
-  prevState = appState;
-  appState  = 'journal';
+  prevState=appState; appState='journal';
+  const char=CHARACTERS[charIdx], charId=char.id, ageF=String(char.age);
+  const powers=getPowers(charId);
+  let tot=0,pos=0;
+  LEVELS.forEach(l=>{const its=l.collectibles.filter(c=>c.forAge==='both'||c.forAge===ageF);pos+=its.length;tot+=its.filter(c=>isCollected(charId,l.id,c.id)).length;});
+  document.getElementById('journal-count').textContent=`${tot} / ${pos} collected`;
 
-  const char   = CHARACTERS[charIdx];
-  const charId = char.id;
-  const ageF   = String(char.age);
-  const powers = getPowers(charId);
-
-  // Count
-  let total = 0, possible = 0;
-  LEVELS.forEach(l => {
-    const its = l.collectibles.filter(c => c.forAge === 'both' || c.forAge === ageF);
-    possible += its.length;
-    total += its.filter(c => isCollected(charId, l.id, c.id)).length;
-  });
-  document.getElementById('journal-count').textContent = `${total} / ${possible} collected`;
-
-  // Powers
-  const pwrWrap = document.getElementById('journal-powers');
-  const allPowers = allPowerDefs();
-  pwrWrap.innerHTML = '';
-  allPowers.forEach(p => {
-    const unlocked = powers.includes(p.id);
-    const chip = document.createElement('div');
-    chip.className = 'journal-power-chip' + (unlocked ? '' : ' locked');
-    chip.innerHTML = `<span>${unlocked ? p.emoji : '🔒'}</span>
-      <div>
-        <div class="journal-power-text">${unlocked ? p.name.toUpperCase() : '???'}</div>
-        ${unlocked ? `<div style="font-family:'Baloo 2',sans-serif;font-size:12px;color:rgba(245,239,224,0.65);line-height:1.3">${p.desc}</div>` : ''}
-      </div>`;
-    pwrWrap.appendChild(chip);
+  const pwrWrap=document.getElementById('journal-powers');
+  pwrWrap.innerHTML='';
+  allPowerDefs().forEach(p=>{
+    const unlocked=powers.includes(p.id);
+    const ch=document.createElement('div');
+    ch.className='j-power-chip'+(unlocked?'':' locked');
+    ch.innerHTML=`<span>${unlocked?p.emoji:'🔒'}</span><div><div class="j-power-text">${unlocked?p.name.toUpperCase():'???'}</div>${unlocked?`<div class="j-power-desc">${p.desc}</div>`:''}</div>`;
+    pwrWrap.appendChild(ch);
   });
 
-  // Grid
-  const grid = document.getElementById('journal-grid');
-  grid.innerHTML = '';
-  LEVELS.forEach(l => {
-    const its = l.collectibles.filter(c => c.forAge === 'both' || c.forAge === ageF);
-    its.forEach(col => {
-      const done = isCollected(charId, l.id, col.id);
-      const card = document.createElement('div');
-      card.className = 'journal-item' + (done ? '' : ' locked');
-      card.innerHTML = `
-        <div class="journal-item-emoji">${done ? col.emoji : '?'}</div>
-        <div class="journal-item-name">${done ? col.name : '???'}</div>
-        <div class="journal-item-country">${l.name} ${l.emoji}</div>
-        ${col.rare && done ? `<div style="width:8px;height:8px;border-radius:50%;background:${C.red};margin-top:2px"></div>` : ''}
-      `;
+  const grid=document.getElementById('journal-grid');
+  grid.innerHTML='';
+  LEVELS.forEach(l=>{
+    l.collectibles.filter(c=>c.forAge==='both'||c.forAge===ageF).forEach(col=>{
+      const done=isCollected(charId,l.id,col.id);
+      const card=document.createElement('div');
+      card.className='journal-item'+(done?'':' locked');
+      card.innerHTML=`<div class="j-item-emoji">${done?col.emoji:'?'}</div><div class="j-item-name">${done?col.name:'???'}</div><div class="j-item-country">${l.name} ${l.emoji}</div>`;
       grid.appendChild(card);
     });
   });
-
   show('journal-overlay');
-  document.getElementById('hud-journal-btn').classList.remove('visible');
 }
-
-function closeJournal() {
-  hide('journal-overlay');
-  appState = prevState || 'map';
-  if (appState === 'level') {
-    document.getElementById('hud-journal-btn').classList.add('visible');
-  }
-}
+function closeJournal() { hide('journal-overlay'); appState=prevState||'map'; }
 
 // ═══════════════════════════════════════════════════════
 //  POSTCARD
 // ═══════════════════════════════════════════════════════
 function triggerPostcard() {
-  if (appState !== 'level') return;
-  appState = 'postcard';
-
-  const char   = CHARACTERS[charIdx];
-  const charId = char.id;
-  const ageF   = String(char.age);
-  const lvl    = activeLvl;
-  const items  = lvl.collectibles.filter(c => c.forAge === 'both' || c.forAge === ageF);
-  const got    = items.filter(c => isCollected(charId, lvl.id, c.id)).length;
-
-  document.getElementById('pc-country').textContent = `${lvl.emoji} ${lvl.name}`;
-  document.getElementById('pc-message').textContent = `"${lvl.postcard.message}"`;
-  document.getElementById('pc-stamp').textContent   = lvl.emoji;
-  document.getElementById('pc-to').textContent      = CHARACTERS.map(c => c.name).join('\n');
-  document.getElementById('pc-collected').textContent = `${char.name}: ${got} of ${items.length} specimens found`;
-
-  // Re-trigger animation
-  const pw = document.querySelector('.postcard-wrap');
-  pw.style.animation = 'none'; pw.offsetHeight; pw.style.animation = '';
-
-  hide('spec-overlay');
-  show('postcard-overlay');
-  document.getElementById('touch-controls').classList.remove('visible');
-  document.getElementById('hud-journal-btn').classList.remove('visible');
+  if (appState!=='level') return;
+  appState='postcard';
+  const char=CHARACTERS[charIdx], charId=char.id, ageF=String(char.age), lvl=activeLvl;
+  const items=lvl.collectibles.filter(c=>c.forAge==='both'||c.forAge===ageF);
+  const got=items.filter(c=>isCollected(charId,lvl.id,c.id)).length;
+  document.getElementById('pc-country').textContent=`${lvl.emoji} ${lvl.name}`;
+  document.getElementById('pc-message').textContent=`"${lvl.postcard.message}"`;
+  document.getElementById('pc-stamp').textContent=lvl.emoji;
+  document.getElementById('pc-to').textContent=CHARACTERS.map(c=>c.name).join('\n');
+  document.getElementById('pc-collected').textContent=`${char.name}: ${got} of ${items.length} specimens`;
+  const pw=document.querySelector('.postcard-wrap');
+  pw.style.animation='none'; pw.offsetHeight; pw.style.animation='';
+  hide('spec-overlay'); show('postcard-overlay');
 }
-
 function backToMap() {
-  hide('postcard-overlay');
-  hide('journal-overlay');
-  appState  = 'map';
-  activeLvl = null;
-  document.getElementById('touch-controls').classList.remove('visible');
-  document.getElementById('hud-journal-btn').classList.remove('visible');
+  hide('postcard-overlay'); hide('journal-overlay');
+  appState='map'; activeLvl=null;
 }
 
 // ═══════════════════════════════════════════════════════
 //  HELPERS
 // ═══════════════════════════════════════════════════════
-function show(id) {
-  const el = document.getElementById(id);
-  el.classList.remove('hidden');
-  el.classList.add('active');
-}
-function hide(id) {
-  const el = document.getElementById(id);
-  el.classList.add('hidden');
-  el.classList.remove('active');
-}
-function roundRect(ctx, x, y, w, h, r) {
+function show(id) { const e=document.getElementById(id); e.classList.remove('hidden'); e.classList.add('active'); }
+function hide(id) { const e=document.getElementById(id); e.classList.add('hidden'); e.classList.remove('active'); }
+function inZone(x,y,z) { return x>=z.x && x<=z.x+z.w && y>=z.y && y<=z.y+z.h; }
+function roundRect(ctx,x,y,w,h,r) {
   ctx.beginPath();
-  ctx.moveTo(x+r, y);
-  ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r);
-  ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
-  ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r);
-  ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
   ctx.closePath();
 }
-function adjustColor(hex, amt) {
-  const n = parseInt(hex.replace('#',''), 16);
-  const r = Math.min(255, Math.max(0, (n>>16)+amt));
-  const g = Math.min(255, Math.max(0, ((n>>8)&0xFF)+amt));
-  const b = Math.min(255, Math.max(0, (n&0xFF)+amt));
+function adjustColor(hex,amt) {
+  const n=parseInt(hex.replace('#',''),16);
+  const r=Math.min(255,Math.max(0,(n>>16)+amt));
+  const g=Math.min(255,Math.max(0,((n>>8)&0xFF)+amt));
+  const b=Math.min(255,Math.max(0,(n&0xFF)+amt));
   return `rgb(${r},${g},${b})`;
 }
 
 // ═══════════════════════════════════════════════════════
-//  INPUT
+//  TOUCH INPUT (multi-touch, normalized to canvas coords)
 // ═══════════════════════════════════════════════════════
-window.addEventListener('keydown', e => {
-  keys[e.key] = true;
-  if ([' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
-  if ((e.key === 'j' || e.key === 'J') && (appState === 'level' || appState === 'map')) openJournal();
-  if (e.key === 'Escape' && appState === 'journal') closeJournal();
-});
-window.addEventListener('keyup', e => { keys[e.key] = false; });
-
-function setupTouch(id, key) {
-  const el = document.getElementById(id);
-  el.addEventListener('touchstart', e => { e.preventDefault(); touch[key] = true; }, { passive:false });
-  el.addEventListener('touchend',   e => { e.preventDefault(); touch[key] = false; }, { passive:false });
-}
-setupTouch('t-left',  'left');
-setupTouch('t-right', 'right');
-setupTouch('t-jump',  'jump');
-setupTouch('t-dash',  'dash');
-
 function canvasCoords(e) {
-  const r = canvas.getBoundingClientRect();
-  const sx = W / r.width, sy = H / r.height;
-  const src = e.touches ? e.touches[0] : e;
-  return { x: (src.clientX - r.left)*sx, y: (src.clientY - r.top)*sy };
+  const r=canvas.getBoundingClientRect();
+  return { x:(e.clientX-r.left)*W/r.width, y:(e.clientY-r.top)*H/r.height };
 }
-canvas.addEventListener('click',     e => { const p = canvasCoords(e); mapClick(p.x, p.y); });
-canvas.addEventListener('mousemove', e => { const p = canvasCoords(e); mapMove(p.x, p.y); });
+
+function syncTouchState() {
+  touch.left=touch.right=touch.jump=touch.dash=false;
+  activeTouches.forEach(({x,y})=>{
+    if (inZone(x,y,ZONES.left))  touch.left =true;
+    if (inZone(x,y,ZONES.right)) touch.right=true;
+    if (inZone(x,y,ZONES.jump))  touch.jump =true;
+    if (inZone(x,y,ZONES.dash))  touch.dash =true;
+  });
+}
+
+canvas.addEventListener('touchstart', e=>{
+  e.preventDefault();
+  Array.from(e.changedTouches).forEach(t=>{
+    const p=canvasCoords({clientX:t.clientX,clientY:t.clientY});
+    activeTouches.set(t.identifier, p);
+    // One-shot taps
+    if (inZone(p.x,p.y,ZONES.journal) && (appState==='level'||appState==='map')) { openJournal(); return; }
+    if (appState==='map') mapClick(p.x,p.y);
+  });
+  syncTouchState();
+},{passive:false});
+
+canvas.addEventListener('touchmove', e=>{
+  e.preventDefault();
+  Array.from(e.changedTouches).forEach(t=>{
+    const p=canvasCoords({clientX:t.clientX,clientY:t.clientY});
+    activeTouches.set(t.identifier,p);
+  });
+  syncTouchState();
+},{passive:false});
+
+canvas.addEventListener('touchend', e=>{
+  e.preventDefault();
+  Array.from(e.changedTouches).forEach(t=>activeTouches.delete(t.identifier));
+  syncTouchState();
+},{passive:false});
+
+// Desktop mouse (map only)
+canvas.addEventListener('click',     e=>{ const p=canvasCoords(e); if(appState==='map')mapClick(p.x,p.y); });
+canvas.addEventListener('mousemove', e=>{ const p=canvasCoords(e); mapMove(p.x,p.y); });
+
+// Keyboard
+window.addEventListener('keydown', e=>{
+  keys[e.key]=true;
+  if([' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+  if((e.key==='j'||e.key==='J')&&(appState==='level'||appState==='map')) openJournal();
+  if(e.key==='Escape'&&appState==='journal') closeJournal();
+});
+window.addEventListener('keyup', e=>{ keys[e.key]=false; });
 
 // ═══════════════════════════════════════════════════════
-//  LOOP
+//  MAIN LOOP
 // ═══════════════════════════════════════════════════════
 function loop() {
-  ctx.clearRect(0, 0, W, H);
-  if (appState === 'map') {
-    drawMap();
-  } else if (appState === 'level' || appState === 'popup') {
-    updateLevel();
-    drawLevel();
-  } else if (appState === 'postcard' || appState === 'journal') {
-    if (activeLvl) drawLevel(); else drawMap();
-  }
+  ctx.clearRect(0,0,W,H);
+  if (appState==='map') { drawMap(); }
+  else if (appState==='level'||appState==='popup') { updateLevel(); drawLevel(); }
+  else if (appState==='postcard'||appState==='journal') { if(activeLvl)drawLevel();else drawMap(); }
   requestAnimationFrame(loop);
 }
 
@@ -1914,19 +1384,19 @@ function loop() {
 // ═══════════════════════════════════════════════════════
 buildCharSelect();
 
-// Draw map in background behind char select
-ctx.fillStyle = C.carto;
-ctx.fillRect(0, 0, W, H);
-ctx.strokeStyle = 'rgba(245,239,224,0.05)';
-ctx.lineWidth = 1;
-for (let x=0; x<W; x+=40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
-for (let y=0; y<H; y+=40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
-ctx.fillStyle = C.bot;
-(function roughContinents() {
-  [[55,115,165,170],[130,300,75,170],[420,100,100,75],[428,185,110,245],[525,80,290,185],[680,375,140,100]].forEach(([x,y,w,h]) => {
-    roundRect(ctx, x, y, w, h, 20); ctx.fill();
-  });
-})();
+// Background map behind char select
+ctx.fillStyle=C.carto; ctx.fillRect(0,0,W,H);
+ctx.strokeStyle='rgba(245,239,224,0.05)'; ctx.lineWidth=1;
+for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+ctx.fillStyle=C.bot;
+[[55,115,165,170],[130,300,75,170],[420,100,100,75],[428,185,110,245],[525,80,290,185],[680,375,140,100]]
+  .forEach(([x,y,w,h])=>{ roundRect(ctx,x,y,w,h,20); ctx.fill(); });
+
+// PWA service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(()=>{});
+}
 </script>
 </body>
 </html>
