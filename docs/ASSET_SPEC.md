@@ -81,6 +81,34 @@ stay 100% on these six. Only the **world** expands.
 
 ---
 
+## ★ FINAL ASSET SIZES (authoritative — use these exact numbers)
+
+All authored at 2×. PNG, transparent EXCEPT `sky` (opaque) and photos (JPG).
+
+**Background layers — all the SAME height (1200), horizon in the bottom ~15%, transparent above.** Same height = horizons line up across layers.
+
+| File | Size | Seamless L-R? |
+|---|---|---|
+| `sky.png` | 2000 × 1200 (opaque) | — |
+| `far.png` | 2400 × 1200 | yes (avoids seam) |
+| `mid.png` | 2800 × 1200 | yes |
+| `near.png` | 3600 × 1200 | helpful |
+| `foreground.png` | 5200 × 1200 | helpful |
+
+**Platform pieces — the three floating ones share ONE size & aspect (3:1) so they read as a family. Single centered object, flat walkable top ~25% down from the top edge, transparent around it.**
+
+| File | Size | Tileable? |
+|---|---|---|
+| `plat-log.png` | 360 × 120 | no — single object |
+| `plat-rock.png` | 360 × 120 | no — single object |
+| `plat-plank.png` | 360 × 120 | no — single object |
+| `plat-ground.png` | 512 × 160 | YES, seamless L-R (it tiles along the floor) |
+
+**Characters** (per nephew, each frame): 96 × 128, transparent, centered, facing right.
+**Collectible plates**: 128 × 128, transparent. **Postcard photo**: 1200 × 800, JPG.
+
+---
+
 ## 2. PER-COUNTRY BACKGROUND LAYERS
 
 Each country needs this stack. Filenames are what the renderer will look for.

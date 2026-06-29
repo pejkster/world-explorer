@@ -923,6 +923,7 @@ function mapMove(mx,my) {
 function enterLevel(lvl) {
   activeLvl=lvl; appState='level'; levelTime=0; camX=0; hudPulse=1;
   levelSeed = Array.from(lvl.id).reduce((a,c)=>a+c.charCodeAt(0),0) % 997 + 1;
+  currentArt = loadLevelArt(lvl.id);
   player.x=80; player.y=GROUND_Y-player.h;
   player.vx=player.vy=0; player.onGround=false; player.facing=1;
   player.extraJumps=0; player.dashCooldown=0; player.dashTimer=0;
@@ -960,31 +961,35 @@ function buildPlatforms() {
   // Low road is always reachable on/near the ground (6yr path).
   // High road (stepping up) holds rare specimens (11yr path). They rejoin.
   const g = { x:0, y:GROUND_Y, w:LEVEL_W, h:92, isGround:true };
-  const P = (x,y,w)=>({ x, y, w, h:14, isGround:false });
+  const kinds = ['log','rock','plank'];
+  let ki = 0;
+  const P = (x,y,w)=>({ x, y, w, h:14, isGround:false, art: kinds[ki++ % 3] });
   const Y = GROUND_Y;
+  // Uniform width (150) so the 3:1 platform art always renders the same thickness
+  const Wd = 150;
   return [g,
     // ── ACT 1 · ARRIVAL (0–650) — gentle, low, teach ──
-    P(230, Y-100, 150),
-    P(440, Y-130, 130),
+    P(230, Y-100, Wd),
+    P(440, Y-130, Wd),
 
     // ── ACT 2 · EXPLORE (650–1450) — path forks ──
     // low road (easy, both)
-    P(660, Y-95,  150),
-    P(900, Y-110, 150),
-    P(1150,Y-95,  150),
+    P(660, Y-95,  Wd),
+    P(900, Y-110, Wd),
+    P(1150,Y-95,  Wd),
     // high road (harder, rare) — a rising staircase
-    P(720, Y-180, 110),
-    P(880, Y-235, 100),
-    P(1040,Y-285, 100),
-    P(1230,Y-250, 110),
+    P(720, Y-180, Wd),
+    P(880, Y-235, Wd),
+    P(1040,Y-285, Wd),
+    P(1230,Y-250, Wd),
 
     // ── ACT 3 · VISTA (1450–2100) — climb to the view + postcard ──
-    P(1420, Y-130, 140),
-    P(1600, Y-190, 120),
-    P(1760, Y-250, 120),  // the high vista ledge (rare specimen / best view)
-    P(1560, Y-95,  150),  // low alternative so 6yr still reaches the end
-    P(1900, Y-120, 160),
-    P(2030, Y-90,  120),
+    P(1420, Y-130, Wd),
+    P(1600, Y-190, Wd),
+    P(1760, Y-250, Wd),  // the high vista ledge (rare specimen / best view)
+    P(1560, Y-95,  Wd),  // low alternative so 6yr still reaches the end
+    P(1900, Y-120, Wd),
+    P(2030, Y-90,  Wd),
   ];
 }
 
@@ -1102,57 +1107,81 @@ function updateLevel() {
 // ═══════════════════════════════════════════════════════
 //  LEVEL RENDER
 // ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+//  LEVEL ART LOADER (paintings drop into assets/levels/<id>/)
+// ═══════════════════════════════════════════════════════
+const ART_NAMES = ['sky','far','mid','near','foreground','plat-ground','plat-log','plat-rock','plat-plank'];
+const levelArt = {};   // id -> { name: Image }
+let currentArt = null;
+
+function loadLevelArt(id) {
+  if (levelArt[id]) return levelArt[id];
+  const set = {};
+  ART_NAMES.forEach(n => {
+    const img = new Image();
+    img._ok = false;
+    img.onload  = () => { img._ok = true; };
+    img.onerror = () => { img._ok = false; };
+    img.src = `assets/levels/${id}/${n}.png`;
+    set[n] = img;
+  });
+  levelArt[id] = set;
+  return set;
+}
+function artOk(name) { return currentArt && currentArt[name] && currentArt[name]._ok; }
+
+// Draw a wide painting as a parallax layer: scale to canvas height, tile across.
+function drawArtLayer(name, speed) {
+  if (!artOk(name)) return false;
+  const img = currentArt[name];
+  const scale = H / img.height;
+  const tileW = img.width * scale;
+  let off = -((camX*speed) % tileW);
+  if (off > 0) off -= tileW;
+  for (let x = off; x < W; x += tileW) {
+    ctx.drawImage(img, x, 0, tileW, H);
+  }
+  return true;
+}
+
 function drawLevel() {
   if (!activeLvl) return;
   const T = THEMES[activeLvl.theme] || THEMES.forest;
+  const hasArt = artOk('sky') || artOk('far') || artOk('mid');
 
-  // ── Layer 0: Sky (depth gradient) ──
-  const sky = ctx.createLinearGradient(0,0,0,H);
-  sky.addColorStop(0,   T.skyTop);
-  sky.addColorStop(0.5, T.skyBot);
-  sky.addColorStop(0.8, T.horizon);
-  sky.addColorStop(1,   T.groundTop);
-  ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
-
-  // God rays (soft warm light from above)
-  drawGodRays();
-
-  // ── Layer 1: Landmark + far silhouette (parallax 0.06) ──
-  drawLandmark(T);
-  drawSilhouetteRange(T.far, 0.10, 150, 90, 6);
-
-  // Clouds / mist drifting (parallax 0.14)
-  ctx.fillStyle='rgba(245,239,224,0.08)';
-  for (let i=0;i<6;i++) {
-    const cx=(i*230-(camX*0.14)%230+230)%(W+230)-115;
-    drawCloud(cx, 60+(i%3)*26, 60+(i%2)*22);
+  if (hasArt) {
+    // ── Painted layer stack ──
+    if (!drawArtLayer('sky', 0.05)) {        // sky fallback gradient
+      const g=ctx.createLinearGradient(0,0,0,H);
+      g.addColorStop(0,T.skyTop); g.addColorStop(0.5,T.skyBot); g.addColorStop(0.8,T.horizon); g.addColorStop(1,T.groundTop);
+      ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    }
+    drawGodRays();
+    drawArtLayer('far', 0.10);
+    drawAmbientLife(T);
+    drawArtLayer('mid', 0.24);
+    drawArtLayer('near', 0.55);
+  } else {
+    // ── Code-drawn fallback (no art yet) ──
+    const sky = ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0, T.skyTop); sky.addColorStop(0.5, T.skyBot);
+    sky.addColorStop(0.8, T.horizon); sky.addColorStop(1, T.groundTop);
+    ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+    drawGodRays();
+    drawLandmark(T);
+    drawSilhouetteRange(T.far, 0.10, 150, 90, 6);
+    ctx.fillStyle='rgba(245,239,224,0.08)';
+    for (let i=0;i<6;i++) { const cx=(i*230-(camX*0.14)%230+230)%(W+230)-115; drawCloud(cx, 60+(i%3)*26, 60+(i%2)*22); }
+    drawSilhouetteRange(T.mid, 0.24, 200, 130, 5);
+    drawAmbientLife(T);
+    ctx.fillStyle = adjustColor(T.mid, -10);
+    for (let i=0;i<26;i++) { const tx=(i*92-(camX*0.4)%92+92)%(W+92)-46; drawTreeSilhouette(tx, GROUND_Y+6, 26+(i%3)*8); }
+    ctx.fillStyle = T.near;
+    for (let i=0;i<20;i++) { const tx=(i*128-(camX*0.55)%128+128)%(W+128)-64; drawTreeSilhouette(tx, GROUND_Y+10, 40+hash(i*5)*22); }
+    const fog = ctx.createLinearGradient(0, GROUND_Y-140, 0, GROUND_Y+10);
+    fog.addColorStop(0,'rgba(0,0,0,0)'); fog.addColorStop(1, hexA(T.fog, 0.35));
+    ctx.fillStyle=fog; ctx.fillRect(0, GROUND_Y-140, W, 150);
   }
-
-  // ── Layer 2: Mid silhouette range (parallax 0.24) ──
-  drawSilhouetteRange(T.mid, 0.24, 200, 130, 5);
-
-  // ── Ambient background life (a bear in the trees, a bird overhead) ──
-  drawAmbientLife(T);
-
-  // ── Layer 2b: Tree/detail band behind play (parallax 0.4) ──
-  ctx.fillStyle = adjustColor(T.mid, -10);
-  for (let i=0;i<26;i++) {
-    const tx=(i*92-(camX*0.4)%92+92)%(W+92)-46;
-    drawTreeSilhouette(tx, GROUND_Y+6, 26+ (i%3)*8);
-  }
-
-  // ── Layer 2c: Near background (parallax 0.55) — detailed, closer foliage ──
-  ctx.fillStyle = T.near;
-  for (let i=0;i<20;i++) {
-    const tx=(i*128-(camX*0.55)%128+128)%(W+128)-64;
-    drawTreeSilhouette(tx, GROUND_Y+10, 40 + hash(i*5)*22);
-  }
-
-  // Distance fog band sitting on the horizon line
-  const fog = ctx.createLinearGradient(0, GROUND_Y-140, 0, GROUND_Y+10);
-  fog.addColorStop(0, 'rgba(0,0,0,0)');
-  fog.addColorStop(1, hexA(T.fog, 0.35));
-  ctx.fillStyle=fog; ctx.fillRect(0, GROUND_Y-140, W, 150);
 
   // ── Layer 3: Platforms (play layer) ──
   platforms.forEach(p => drawPlatform(p,T));
@@ -1190,7 +1219,7 @@ function drawLevel() {
   drawPlayer();
 
   // ── Layer 4: Foreground occluders (parallax 1.25) — the Ori depth trick ──
-  drawForeground(T);
+  if (!drawArtLayer('foreground', 1.25)) drawForeground(T);
   // ── Layer 5: Atmosphere ──
   drawParticles(T);
   drawVignette();
@@ -1204,19 +1233,43 @@ function drawLevel() {
 function drawPlatform(p,T) {
   const sx=p.x-camX, sw=p.w;
   if (sx+sw<-10||sx>W+10) return;
+
   if (p.isGround) {
-    ctx.fillStyle=T.groundTop; ctx.fillRect(sx,p.y,sw,p.h);
-    ctx.fillStyle=T.grassLine; ctx.fillRect(sx,p.y,sw,8);
-  } else {
-    ctx.fillStyle=T.platFill;
-    roundRect(ctx,sx,p.y,sw,p.h,3); ctx.fill();
-    ctx.strokeStyle=T.platEdge; ctx.lineWidth=1; ctx.globalAlpha=0.3;
-    for(let i=1;i<4;i++){const lx=sx+sw*i/4;ctx.beginPath();ctx.moveTo(lx,p.y+2);ctx.lineTo(lx,p.y+p.h-2);ctx.stroke();}
-    ctx.globalAlpha=1;
-    ctx.fillStyle='rgba(245,239,224,0.15)'; ctx.fillRect(sx+4,p.y+2,sw-8,3);
-    ctx.strokeStyle=T.platEdge; ctx.lineWidth=1.5;
-    roundRect(ctx,sx,p.y,sw,p.h,3); ctx.stroke();
+    // Solid earth fill below the ground line (always — keeps the floor readable)
+    ctx.fillStyle=T.groundBot; ctx.fillRect(sx,p.y,sw,p.h);
+    if (artOk('plat-ground')) {
+      // Tile the painted ground cap along the surface (grass top sits at p.y)
+      const img=currentArt['plat-ground'];
+      const capH=88, capW=capH*(img.width/img.height);
+      let off=-((camX) % capW); if(off>0) off-=capW;
+      for(let x=off;x<W;x+=capW) ctx.drawImage(img, x, p.y-10, capW, capH);
+    } else {
+      ctx.fillStyle=T.groundTop; ctx.fillRect(sx,p.y,sw,p.h);
+      ctx.fillStyle=T.grassLine; ctx.fillRect(sx,p.y,sw,8);
+    }
+    return;
   }
+
+  // Floating platform — painted piece if available
+  const kindMap={log:'plat-log',rock:'plat-rock',plank:'plat-plank'};
+  const artName=kindMap[p.art];
+  if (artName && artOk(artName)) {
+    const img=currentArt[artName];
+    const dh=sw*(img.height/img.width);
+    // Art's flat walkable top is ~25% down from the top edge → align to p.y
+    ctx.drawImage(img, sx, p.y - dh*0.25, sw, dh);
+    return;
+  }
+
+  // Vector fallback
+  ctx.fillStyle=T.platFill;
+  roundRect(ctx,sx,p.y,sw,p.h,3); ctx.fill();
+  ctx.strokeStyle=T.platEdge; ctx.lineWidth=1; ctx.globalAlpha=0.3;
+  for(let i=1;i<4;i++){const lx=sx+sw*i/4;ctx.beginPath();ctx.moveTo(lx,p.y+2);ctx.lineTo(lx,p.y+p.h-2);ctx.stroke();}
+  ctx.globalAlpha=1;
+  ctx.fillStyle='rgba(245,239,224,0.15)'; ctx.fillRect(sx+4,p.y+2,sw-8,3);
+  ctx.strokeStyle=T.platEdge; ctx.lineWidth=1.5;
+  roundRect(ctx,sx,p.y,sw,p.h,3); ctx.stroke();
 }
 
 function drawMountain(x,y,w,h) {
