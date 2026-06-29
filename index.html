@@ -334,6 +334,13 @@ canvas {
   text-transform: uppercase;
 }
 .journal-count { font-size: 13px; font-weight: 600; color: rgba(27,42,59,0.45); letter-spacing: 0.1em; text-transform: uppercase; }
+.journal-close-x {
+  background: transparent; border: 2px solid var(--ink); color: var(--ink);
+  width: 36px; height: 36px; border-radius: 6px; font-size: 18px; font-weight: 600;
+  cursor: pointer; line-height: 1; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; -webkit-tap-highlight-color: transparent;
+}
+.journal-close-x:hover { background: var(--ink); color: var(--spec); }
 .j-section-label { font-size: 13px; font-weight: 600; color: rgba(27,42,59,0.45); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; }
 .journal-powers { display:flex; gap:10px; flex-wrap:wrap; }
 .j-power-chip {
@@ -475,7 +482,10 @@ canvas {
     <div class="journal-panel">
       <div class="journal-header">
         <span class="journal-title">Field Journal</span>
-        <span class="journal-count" id="journal-count"></span>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <span class="journal-count" id="journal-count"></span>
+          <button class="journal-close-x" onclick="closeJournal()" aria-label="Close">✕</button>
+        </div>
       </div>
       <div>
         <div class="j-section-label">Powers</div>
@@ -542,9 +552,27 @@ const LEVEL_W  = 2100;
 const GRAVITY  = 0.52;
 
 const THEMES = {
-  forest:  { skyTop:'#1A3A5C', skyBot:'#2D6A4F', groundTop:'#1a3d2b', groundBot:'#13291c', platFill:'#D4874A', platEdge:'#1B2A3B', grassLine:'#2D6A4F' },
-  coastal: { skyTop:'#1A3A5C', skyBot:'#2b4f6e', groundTop:'#1B2A3B', groundBot:'#111e2a', platFill:'#D4874A', platEdge:'#1B2A3B', grassLine:'#D4874A' },
-  tropical:{ skyTop:'#1A3A5C', skyBot:'#2D6A4F', groundTop:'#2D6A4F', groundBot:'#1a3d2b', platFill:'#1B2A3B', platEdge:'#D4874A', grassLine:'#D4874A' },
+  forest:  {
+    skyTop:'#13314f', skyBot:'#1A3A5C', horizon:'#2D6A4F',
+    groundTop:'#1a3d2b', groundBot:'#0f2419',
+    platFill:'#D4874A', platEdge:'#1B2A3B', grassLine:'#2D6A4F',
+    far:'#15324d', mid:'#173a2a', fore:'#0c1f15',
+    fog:'#1A3A5C', particle:'#D4874A', particleKind:'firefly', landmark:'mountain',
+  },
+  coastal: {
+    skyTop:'#1A3A5C', skyBot:'#3a5e7e', horizon:'#5a7e96',
+    groundTop:'#1B2A3B', groundBot:'#0e1822',
+    platFill:'#D4874A', platEdge:'#1B2A3B', grassLine:'#D4874A',
+    far:'#22455f', mid:'#1b3346', fore:'#0e1c28',
+    fog:'#3a5e7e', particle:'#F5EFE0', particleKind:'petal', landmark:'fuji',
+  },
+  tropical:{
+    skyTop:'#1A3A5C', skyBot:'#2D6A4F', horizon:'#3f8060',
+    groundTop:'#234d36', groundBot:'#13291c',
+    platFill:'#1B2A3B', platEdge:'#D4874A', grassLine:'#D4874A',
+    far:'#1d4a36', mid:'#19402e', fore:'#0d2418',
+    fog:'#2D6A4F', particle:'#D4874A', particleKind:'dust', landmark:'volcano',
+  },
 };
 
 // ── Touch control zones (canvas coords 900×600) ──
@@ -576,9 +604,12 @@ let mapHover = null;
 
 let platforms    = [];
 let collectibles = [];
+let particles    = [];
 let postcardX    = 0;
 let levelTime    = 0;
 let hudPulse     = 1;
+// Deterministic per-level scatter (so trees/silhouettes don't shimmer)
+let levelSeed    = 1;
 
 const player = {
   x:80, y:400, w:34, h:48,
@@ -885,6 +916,7 @@ function mapMove(mx,my) {
 // ═══════════════════════════════════════════════════════
 function enterLevel(lvl) {
   activeLvl=lvl; appState='level'; levelTime=0; camX=0; hudPulse=1;
+  levelSeed = Array.from(lvl.id).reduce((a,c)=>a+c.charCodeAt(0),0) % 997 + 1;
   player.x=80; player.y=GROUND_Y-player.h;
   player.vx=player.vy=0; player.onGround=false; player.facing=1;
   player.extraJumps=0; player.dashCooldown=0; player.dashTimer=0;
@@ -901,19 +933,53 @@ function enterLevel(lvl) {
 
   platforms  = buildPlatforms();
   postcardX  = LEVEL_W-120;
+
+  // Atmosphere particles spread across the whole level
+  particles = [];
+  for (let i=0;i<70;i++) {
+    particles.push({
+      x: Math.random()*LEVEL_W,
+      y: Math.random()*(H-120)+20,
+      r: 1.2 + Math.random()*2,
+      phase: Math.random()*Math.PI*2,
+      drift: 0.2 + Math.random()*0.4,
+      sway: 6 + Math.random()*14,
+    });
+  }
   startAmbient(lvl.theme);
 }
 
 function buildPlatforms() {
+  // 3-ACT layout: Arrival (flat, safe) → Explore (branch) → Vista (climb)
+  // Low road is always reachable on/near the ground (6yr path).
+  // High road (stepping up) holds rare specimens (11yr path). They rejoin.
   const g = { x:0, y:GROUND_Y, w:LEVEL_W, h:92, isGround:true };
-  return [g, ...[
-    {x:220,y:GROUND_Y-105,w:140},{x:400,y:GROUND_Y-170,w:120},
-    {x:570,y:GROUND_Y-105,w:150},{x:740,y:GROUND_Y-210,w:110},
-    {x:910,y:GROUND_Y-140,w:130},{x:1060,y:GROUND_Y-85,w:145},
-    {x:1210,y:GROUND_Y-175,w:115},{x:1380,y:GROUND_Y-115,w:135},
-    {x:1540,y:GROUND_Y-210,w:120},{x:1700,y:GROUND_Y-145,w:145},
-    {x:1870,y:GROUND_Y-90,w:130},{x:2010,y:GROUND_Y-160,w:110},
-  ].map(p=>({ ...p, h:14, isGround:false }))];
+  const P = (x,y,w)=>({ x, y, w, h:14, isGround:false });
+  const Y = GROUND_Y;
+  return [g,
+    // ── ACT 1 · ARRIVAL (0–650) — gentle, low, teach ──
+    P(230, Y-100, 150),
+    P(440, Y-130, 130),
+
+    // ── ACT 2 · EXPLORE (650–1450) — path forks ──
+    // low road (easy, both)
+    P(660, Y-95,  150),
+    P(900, Y-110, 150),
+    P(1150,Y-95,  150),
+    // high road (harder, rare) — a rising staircase
+    P(720, Y-180, 110),
+    P(880, Y-235, 100),
+    P(1040,Y-285, 100),
+    P(1230,Y-250, 110),
+
+    // ── ACT 3 · VISTA (1450–2100) — climb to the view + postcard ──
+    P(1420, Y-130, 140),
+    P(1600, Y-190, 120),
+    P(1760, Y-250, 120),  // the high vista ledge (rare specimen / best view)
+    P(1560, Y-95,  150),  // low alternative so 6yr still reaches the end
+    P(1900, Y-120, 160),
+    P(2030, Y-90,  120),
+  ];
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1034,30 +1100,45 @@ function drawLevel() {
   if (!activeLvl) return;
   const T = THEMES[activeLvl.theme] || THEMES.forest;
 
-  // Sky
+  // ── Layer 0: Sky (depth gradient) ──
   const sky = ctx.createLinearGradient(0,0,0,H);
-  sky.addColorStop(0, T.skyTop); sky.addColorStop(0.65,T.skyBot); sky.addColorStop(1,T.groundTop);
+  sky.addColorStop(0,   T.skyTop);
+  sky.addColorStop(0.5, T.skyBot);
+  sky.addColorStop(0.8, T.horizon);
+  sky.addColorStop(1,   T.groundTop);
   ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
 
-  // Far hills
-  ctx.fillStyle = adjustColor(T.skyTop,-8);
-  for (let i=0;i<9;i++) {
-    const mx = (i*270 - (camX*0.08)%270 + 270)%(W+270) - 135;
-    drawMountain(mx, GROUND_Y-(70+(i%4)*30), 180, 70+(i%4)*30);
-  }
-  // Clouds
-  ctx.fillStyle='rgba(245,239,224,0.1)';
+  // God rays (soft warm light from above)
+  drawGodRays();
+
+  // ── Layer 1: Landmark + far silhouette (parallax 0.06) ──
+  drawLandmark(T);
+  drawSilhouetteRange(T.far, 0.10, 150, 90, 6);
+
+  // Clouds / mist drifting (parallax 0.14)
+  ctx.fillStyle='rgba(245,239,224,0.08)';
   for (let i=0;i<6;i++) {
-    const cx=(i*200-(camX*0.18)%200+200)%(W+200)-100;
-    drawCloud(cx, 55+(i%3)*28, 55+(i%2)*20);
-  }
-  // Trees
-  for (let i=0;i<22;i++) {
-    const tx=(i*100-(camX*0.3)%100+100)%(W+100)-50;
-    drawTree(tx, GROUND_Y, T, activeLvl.theme);
+    const cx=(i*230-(camX*0.14)%230+230)%(W+230)-115;
+    drawCloud(cx, 60+(i%3)*26, 60+(i%2)*22);
   }
 
-  // Platforms
+  // ── Layer 2: Mid silhouette range (parallax 0.24) ──
+  drawSilhouetteRange(T.mid, 0.24, 200, 130, 5);
+
+  // ── Layer 2b: Tree/detail band behind play (parallax 0.4) ──
+  ctx.fillStyle = adjustColor(T.mid, -10);
+  for (let i=0;i<26;i++) {
+    const tx=(i*92-(camX*0.4)%92+92)%(W+92)-46;
+    drawTreeSilhouette(tx, GROUND_Y+6, 26+ (i%3)*8);
+  }
+
+  // Distance fog band sitting on the horizon line
+  const fog = ctx.createLinearGradient(0, GROUND_Y-140, 0, GROUND_Y+10);
+  fog.addColorStop(0, 'rgba(0,0,0,0)');
+  fog.addColorStop(1, hexA(T.fog, 0.35));
+  ctx.fillStyle=fog; ctx.fillRect(0, GROUND_Y-140, W, 150);
+
+  // ── Layer 3: Platforms (play layer) ──
   platforms.forEach(p => drawPlatform(p,T));
 
   // Collectibles
@@ -1091,6 +1172,13 @@ function drawLevel() {
 
   drawPostcardMarker();
   drawPlayer();
+
+  // ── Layer 4: Foreground occluders (parallax 1.25) — the Ori depth trick ──
+  drawForeground(T);
+  // ── Layer 5: Atmosphere ──
+  drawParticles(T);
+  drawVignette();
+
   drawHUD();
   if (isMobile) drawTouchControls();
 }
@@ -1127,6 +1215,163 @@ function drawTree(x,y,T,theme) {
   ctx.beginPath();ctx.arc(x,y-40,18,0,Math.PI*2);ctx.fill();
   ctx.beginPath();ctx.arc(x-11,y-30,12,0,Math.PI*2);ctx.fill();
   ctx.beginPath();ctx.arc(x+11,y-30,12,0,Math.PI*2);ctx.fill();
+}
+
+// ── hex → rgba with alpha ──
+function hexA(hex, a) {
+  if (hex[0] !== '#') return hex;
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`;
+}
+// Deterministic pseudo-random from integer (no shimmer)
+function hash(i) { const s = Math.sin(i*127.1+levelSeed*311.7)*43758.5; return s - Math.floor(s); }
+
+// ── God rays: soft diagonal light shafts from the sky ──
+function drawGodRays() {
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  const sway = Math.sin(levelTime*0.2)*30;
+  for (let i=0;i<4;i++) {
+    const x = 120 + i*220 + sway;
+    const g = ctx.createLinearGradient(x, 0, x-90, H*0.7);
+    g.addColorStop(0, hexA(C.amber, 0.10));
+    g.addColorStop(1, hexA(C.amber, 0));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(x, 0); ctx.lineTo(x+70, 0);
+    ctx.lineTo(x-50, H*0.7); ctx.lineTo(x-120, H*0.7);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ── Distant landmark (the place you walk toward) ──
+function drawLandmark(T) {
+  const sx = W*0.52 - camX*0.06;
+  const baseY = GROUND_Y - 40;
+  ctx.save();
+  if (T.landmark === 'fuji' || T.landmark === 'volcano') {
+    // Symmetric cone
+    const w=300, h=230;
+    ctx.fillStyle = adjustColor(T.far, 6);
+    ctx.beginPath();
+    ctx.moveTo(sx-w/2, baseY); ctx.lineTo(sx, baseY-h); ctx.lineTo(sx+w/2, baseY);
+    ctx.closePath(); ctx.fill();
+    // Snow / crater cap
+    ctx.fillStyle = T.landmark==='fuji' ? hexA(C.spec,0.85) : hexA(C.red,0.7);
+    ctx.beginPath();
+    ctx.moveTo(sx-46, baseY-h+58); ctx.lineTo(sx, baseY-h);
+    ctx.lineTo(sx+46, baseY-h+58);
+    ctx.lineTo(sx+24, baseY-h+44); ctx.lineTo(sx+10, baseY-h+60);
+    ctx.lineTo(sx-12, baseY-h+44); ctx.lineTo(sx-28, baseY-h+62);
+    ctx.closePath(); ctx.fill();
+  } else {
+    // Jagged mountain massif (Triglav-style)
+    const w=360, h=250;
+    ctx.fillStyle = adjustColor(T.far, 6);
+    ctx.beginPath();
+    ctx.moveTo(sx-w/2, baseY);
+    ctx.lineTo(sx-110, baseY-h*0.55);
+    ctx.lineTo(sx-50,  baseY-h*0.8);
+    ctx.lineTo(sx-10,  baseY-h);
+    ctx.lineTo(sx+40,  baseY-h*0.7);
+    ctx.lineTo(sx+95,  baseY-h*0.85);
+    ctx.lineTo(sx+w/2, baseY);
+    ctx.closePath(); ctx.fill();
+    // Snow caps
+    ctx.fillStyle = hexA(C.spec, 0.8);
+    ctx.beginPath();
+    ctx.moveTo(sx-10, baseY-h); ctx.lineTo(sx-30, baseY-h*0.82);
+    ctx.lineTo(sx+2, baseY-h*0.88); ctx.lineTo(sx+18, baseY-h*0.8);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ── A range of rounded silhouette peaks ──
+function drawSilhouetteRange(color, parallax, spacing, baseH, count) {
+  ctx.fillStyle = color;
+  const off = camX*parallax;
+  ctx.beginPath();
+  ctx.moveTo(-50, GROUND_Y+10);
+  for (let i=-1;i<=count+1;i++) {
+    const cx = (i*spacing - off%spacing);
+    const h  = baseH + hash(i)*baseH*0.6;
+    ctx.lineTo(cx, GROUND_Y - h*0.5);
+    ctx.quadraticCurveTo(cx + spacing*0.25, GROUND_Y - h, cx + spacing*0.5, GROUND_Y - h*0.55);
+    ctx.quadraticCurveTo(cx + spacing*0.75, GROUND_Y - h*0.2, cx + spacing, GROUND_Y - h*0.5);
+  }
+  ctx.lineTo(W+50, GROUND_Y+10);
+  ctx.closePath(); ctx.fill();
+}
+
+function drawTreeSilhouette(x, baseY, h) {
+  ctx.beginPath();
+  ctx.moveTo(x-h*0.5, baseY);
+  ctx.quadraticCurveTo(x-h*0.3, baseY-h*0.6, x, baseY-h);
+  ctx.quadraticCurveTo(x+h*0.3, baseY-h*0.6, x+h*0.5, baseY);
+  ctx.closePath(); ctx.fill();
+}
+
+// ── Foreground occluders (fast parallax, out-of-focus dark foliage) ──
+function drawForeground(T) {
+  ctx.fillStyle = T.fore;
+  // Bottom grass/foliage clumps the player passes in front of
+  for (let i=0;i<16;i++) {
+    const wx = i*150;
+    const sx = wx - camX*1.25;
+    if (sx < -90 || sx > W+90) continue;
+    const clump = 40 + hash(i*3)*40;
+    // soft blob
+    ctx.beginPath();
+    ctx.ellipse(sx, H+10, clump, clump*0.7, 0, 0, Math.PI*2);
+    ctx.fill();
+    // a few blades
+    for (let b=0;b<4;b++){
+      const bx = sx - clump*0.5 + b*clump*0.33;
+      ctx.beginPath();
+      ctx.moveTo(bx, H);
+      ctx.quadraticCurveTo(bx+ (hash(i*7+b)-0.5)*16, H-30-hash(i+b)*22, bx+(hash(i+b)-0.5)*24, H-40-hash(i*2+b)*26);
+      ctx.lineWidth = 4; ctx.strokeStyle = T.fore; ctx.stroke();
+    }
+  }
+}
+
+// ── Atmosphere particles (fireflies / petals / dust) ──
+function drawParticles(T) {
+  ctx.save();
+  particles.forEach(p => {
+    const sx = p.x - camX*1.1;
+    if (sx < -20 || sx > W+20) return;
+    const sy = p.y + Math.sin(levelTime*p.drift + p.phase)*p.sway;
+    if (T.particleKind === 'firefly') {
+      const pulse = 0.35 + 0.35*Math.sin(levelTime*2 + p.phase);
+      ctx.shadowColor = T.particle; ctx.shadowBlur = 8;
+      ctx.fillStyle = hexA(T.particle, pulse);
+      ctx.beginPath(); ctx.arc(sx, sy, p.r, 0, Math.PI*2); ctx.fill();
+      ctx.shadowBlur = 0;
+    } else if (T.particleKind === 'petal') {
+      const fall = (levelTime*16*p.drift) % (H+40);
+      const py = (p.y + fall) % (H+40);
+      ctx.fillStyle = hexA(T.particle, 0.5);
+      ctx.save(); ctx.translate(sx, py); ctx.rotate(levelTime*p.drift + p.phase);
+      roundRect(ctx, -p.r, -p.r*0.6, p.r*2, p.r*1.2, 1.5); ctx.fill();
+      ctx.restore();
+    } else { // dust
+      ctx.fillStyle = hexA(T.particle, 0.18);
+      ctx.beginPath(); ctx.arc(sx, sy, p.r*0.8, 0, Math.PI*2); ctx.fill();
+    }
+  });
+  ctx.restore();
+}
+
+// ── Vignette + warm focal grade ──
+function drawVignette() {
+  const v = ctx.createRadialGradient(W/2, H*0.45, H*0.25, W/2, H*0.5, H*0.85);
+  v.addColorStop(0, 'rgba(0,0,0,0)');
+  v.addColorStop(1, 'rgba(15,22,34,0.45)');
+  ctx.fillStyle = v;
+  ctx.fillRect(0,0,W,H);
 }
 function drawPostcardMarker() {
   const sx=postcardX-camX;
