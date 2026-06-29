@@ -95,14 +95,23 @@ All authored at 2×. PNG, transparent EXCEPT `sky` (opaque) and photos (JPG).
 | `near.png` | 3600 × 1200 | helpful |
 | `foreground.png` | 5200 × 1200 | helpful |
 
-**Platform pieces — the three floating ones share ONE size & aspect (3:1) so they read as a family. Single centered object, flat walkable top ~25% down from the top edge, transparent around it.**
+**Ground — a dedicated painted floor layer (NOT a platform tile). One long horizontal strip, the grass/surface at the TOP edge, earth/roots/foliage filling down. Seamless left-right so it repeats invisibly across the whole floor.**
+
+| File | Size | Tileable? |
+|---|---|---|
+| `ground.png` | 1024 × 320 (seamless L-R) | YES — spans the entire floor |
+
+> Authoring note: the **walkable surface = the very top of the image**. Everything
+> below is earth/roots that fills to the bottom of the screen. It draws at full
+> play-layer speed (1.0), grass line locked to ground level.
+
+**Floating platform pieces — the three share ONE size & aspect (3:1) so they read as a family. Single centered object, flat walkable top ~25% down from the top edge, transparent around it.**
 
 | File | Size | Tileable? |
 |---|---|---|
 | `plat-log.png` | 360 × 120 | no — single object |
 | `plat-rock.png` | 360 × 120 | no — single object |
 | `plat-plank.png` | 360 × 120 | no — single object |
-| `plat-ground.png` | 512 × 160 | YES, seamless L-R (it tiles along the floor) |
 
 **Characters** (per nephew, each frame): 96 × 128, transparent, centered, facing right.
 **Collectible plates**: 128 × 128, transparent. **Postcard photo**: 1200 × 800, JPG.

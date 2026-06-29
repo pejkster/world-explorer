@@ -1121,7 +1121,7 @@ function updateLevel() {
 // ═══════════════════════════════════════════════════════
 //  LEVEL ART LOADER (paintings drop into assets/levels/<id>/)
 // ═══════════════════════════════════════════════════════
-const ART_NAMES = ['sky','far','mid','near','foreground','plat-ground','plat-log','plat-rock','plat-plank'];
+const ART_NAMES = ['sky','far','mid','near','foreground','ground','plat-log','plat-rock','plat-plank'];
 const levelArt = {};   // id -> { name: Image }
 let currentArt = null;
 
@@ -1246,14 +1246,16 @@ function drawPlatform(p,T) {
   if (sx+sw<-10||sx>W+10) return;
 
   if (p.isGround) {
-    // Solid earth fill below the ground line (always — keeps the floor readable)
-    ctx.fillStyle=T.groundBot; ctx.fillRect(sx,p.y,sw,p.h);
-    if (artOk('plat-ground')) {
-      // Tile the painted ground cap along the surface (grass top sits at p.y)
-      const img=currentArt['plat-ground'];
-      const capH=88, capW=capH*(img.width/img.height);
-      let off=-((camX) % capW); if(off>0) off-=capW;
-      for(let x=off;x<W;x+=capW) ctx.drawImage(img, x, p.y-10, capW, capH);
+    // Solid earth fill below the ground line (backstop, keeps floor opaque)
+    ctx.fillStyle=T.groundBot; ctx.fillRect(0, p.y+40, W, H-(p.y+40));
+    if (artOk('ground')) {
+      // Dedicated painted ground layer at play-layer parallax (1.0).
+      // Authored seamless L-R; grass surface sits at the image top → align to p.y.
+      const img=currentArt['ground'];
+      const gh=H - p.y + 60;                 // tall enough to reach screen bottom
+      const gw=gh*(img.width/img.height);
+      let off=-(camX % gw); if(off>0) off-=gw;
+      for(let x=off;x<W;x+=gw) ctx.drawImage(img, x, p.y-12, gw, gh);
     } else {
       ctx.fillStyle=T.groundTop; ctx.fillRect(sx,p.y,sw,p.h);
       ctx.fillStyle=T.grassLine; ctx.fillRect(sx,p.y,sw,8);
