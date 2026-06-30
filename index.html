@@ -470,6 +470,9 @@ canvas {
       <div class="cs-prompt">Choose your explorer</div>
       <div class="cs-cards" id="cs-cards"></div>
       <button class="btn-primary" id="btn-start" disabled onclick="startGame()">Begin Expedition</button>
+      <div class="cs-sub hidden" id="ios-hint" style="color:rgba(245,239,224,0.6);margin-top:4px;text-transform:none;letter-spacing:0;font-weight:400;">
+        Tip: tap <strong>Share → Add to Home Screen</strong> for full screen
+      </div>
     </div>
   </div>
 
@@ -798,8 +801,17 @@ function buildCharSelect() {
   });
 }
 
+function requestFS() {
+  const el = document.documentElement;
+  const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen;
+  if (fn) { try { const p = fn.call(el); if (p && p.catch) p.catch(()=>{}); } catch(e) {} }
+  // Lock to landscape where supported (Android)
+  try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(()=>{}); } catch(e) {}
+}
+
 function startGame() {
   if (charIdx === null) return;
+  requestFS();
   loadCharArt(CHARACTERS[charIdx].id);
   initAudio();
   if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
@@ -2157,6 +2169,13 @@ function loop() {
   drawLoadingBg();
   try { LEVELS = await loadLevelsFromSupabase(); } catch(e) {}
   buildCharSelect();
+
+// Show the iOS "Add to Home Screen" tip (iPhone Safari can't do web fullscreen)
+(function iosHint(){
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const standalone = window.navigator.standalone === true;
+  if (isIOS && !standalone) document.getElementById('ios-hint').classList.remove('hidden');
+})();
   drawLoadingBg();
 })();
 
