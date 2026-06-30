@@ -676,46 +676,50 @@ const LAYOUTS = {
     width: 6600,
     zones: [
       { mode:'platform', x0:0,    x1:3640 },
-      { mode:'swim',     x0:3640, x1:6600, waterTop:165 },   // the reef
+      { mode:'swim',     x0:3640, x1:6600, waterTop:150, seabed:1280 },  // deep reef
     ],
     groundSegs: [
       { x:0,    w:1500 },                 // jungle floor
       { x:1620, w:900  },                 // after a small log gap
       { x:2680, w:920  },                 // river bank → dive cliff (ends 3600)
-      { x:3700, w:2900 },                 // reef seabed (under the water)
+      { x:3700, w:2900, y:1280 },         // reef seabed — deep below the surface
     ],
     plats: [
-      // ── Ch.1 Rainforest ──
-      [300, GY-95], [540, GY-140], [780, GY-105], [1020, GY-150],
-      [1260, GY-110],
-      [1560, GY-55],                      // stepping log over the gap
-      [1700, GY-150], [1900, GY-220], [2100, GY-180], [2320, GY-230],
-      [2600, GY-55],                      // stepping log over the glide gap
-      [2760, GY-120], [2980, GY-180], [3200, GY-130], [3420, GY-90],
-      // ── Ch.2 Reef coral outcrops (rest spots at various depths) ──
-      [3860, GY-50], [4220, GY-130], [4600, GY-70], [5000, GY-160],
-      [5400, GY-90], [5800, GY-140], [6150, GY-60],
+      // ── Ch.1 Rainforest — navigate around trunks, up onto canopy ──
+      [300, GY-95], [820, GY-110], [1060, GY-150], [1280, GY-110],
+      [1700, GY-150], [1900, GY-225], [2100, GY-185], [2330, GY-235],
+      [2560, GY-150], [2820, GY-120], [3060, GY-185], [3300, GY-130], [3460, GY-95],
+      // ── Ch.2 Reef — coral steps descending into the deep ──
+      [3880, 300], [4180, 540], [4520, 760], [4520, 360],
+      [4900, 980], [5180, 620], [5480, 1120], [5820, 860], [6160, 1180],
+    ],
+    walls: [
+      // Tree trunks + a rock face you must hop / climb around (jungle terrain)
+      [560,  GY-95,  42, 95,  'tree'],
+      [1480, GY-115, 46, 115, 'tree'],
+      [2240, GY-140, 48, 140, 'rock'],
+      [3000, GY-100, 42, 100, 'tree'],
     ],
     collPos: {
       // Ch.1
-      "Orangutan":        { x:780,  y:GY-150 },
-      "Proboscis Monkey": { x:1260, y:GY-160 },
-      "Gibbon":           { x:2100, y:GY-230 },   // grants Glide
-      "Scuba Gear":       { x:3420, y:GY-140 },   // the key — at the dive cliff
-      // Ch.2 (depths within the water column 165–512)
-      "Grey Reef Shark":  { x:4020, y:300 },
-      "Manta Ray":        { x:4720, y:235 },
-      "Mantis Shrimp":    { x:5320, y:440 },
-      "Nudibranch":       { x:5950, y:380 },
+      "Orangutan":        { x:880,  y:GY-160 },
+      "Proboscis Monkey": { x:1280, y:GY-160 },
+      "Gibbon":           { x:2100, y:GY-235 },   // grants Glide
+      "Scuba Gear":       { x:3460, y:GY-145 },   // the key — at the dive cliff
+      // Ch.2 — spread down the water column (150 → 1280)
+      "Grey Reef Shark":  { x:3980, y:360 },
+      "Manta Ray":        { x:4560, y:660 },
+      "Nudibranch":       { x:5180, y:560 },
+      "Mantis Shrimp":    { x:5560, y:1140 },
     },
     story: [
       { x:160,  text:"Indonesia. I stepped into a rainforest older than memory." },
       { x:1100, text:"The trees were full of faces — watching, swinging, calling." },
       { x:2100, text:"A gibbon showed me how to fly between the branches." },
-      { x:3380, text:"At the river's edge I strapped on a tank and dropped into the blue…" },
-      { x:3850, text:"Beneath the surface the noise of the world vanished. Only the reef remained." },
-      { x:4720, text:"A manta passed overhead like a slow, dark cloud." },
-      { x:6000, text:"I surfaced near a wooden boat, the islands waiting on the horizon…" },
+      { x:3360, text:"At the river's edge I strapped on a tank and dropped into the blue…" },
+      { x:3850, text:"Beneath the surface the noise of the world vanished. I sank into the reef." },
+      { x:4560, text:"A manta passed overhead like a slow, dark cloud." },
+      { x:6000, text:"Far below, I found the strangest little creatures of all…" },
     ],
     dark: [],
   },
@@ -795,6 +799,7 @@ const activeTouches = new Map(); // id → {x,y}
 let jumpWasUp = true;
 let dashWasUp = true;
 let camX = 0;
+let camY = 0;   // vertical camera (active in swim / tall zones)
 
 // ═══════════════════════════════════════════════════════
 //  SAVE / POWERS
@@ -1131,9 +1136,11 @@ function enterLevel(lvl) {
 // Build platforms from a hand-crafted journey layout
 function buildLayoutPlatforms(L) {
   const arr = [];
-  L.groundSegs.forEach(s => arr.push({ x:s.x, y:GROUND_Y, w:s.w, h:92, isGround:true }));
+  L.groundSegs.forEach(s => arr.push({ x:s.x, y:(s.y!=null?s.y:GROUND_Y), w:s.w, h:s.h||92, isGround:true }));
   const kinds = ['log','rock','plank']; let ki = 0;
   L.plats.forEach(p => arr.push({ x:p[0], y:p[1], w:p[2]||150, h:14, isGround:false, art:kinds[ki++ % 3] }));
+  // Solid obstacles: [x, y, w, h, kind]  kind = 'tree' | 'rock'
+  (L.walls||[]).forEach(w => arr.push({ x:w[0], y:w[1], w:w[2], h:w[3], isGround:false, solid:true, kind:w[4]||'tree' }));
   return arr;
 }
 
@@ -1247,12 +1254,30 @@ function updateLevel() {
 
   player.onGround = false;
   platforms.forEach(p => {
-    const prevBot = player.y+player.h-player.vy;
-    const curBot  = player.y+player.h;
-    const inX = player.x+player.w > p.x+4 && player.x < p.x+p.w-4;
-    if (inX && prevBot<=p.y && curBot>=p.y && player.vy>=0) {
-      player.y = p.y-player.h; player.vy=0; player.onGround=true;
-      if (powers.includes('double_jump')) player.extraJumps=1;
+    if (p.solid) {
+      // Full AABB resolve — walls, tree trunks, rock faces block on all sides
+      const ox = Math.min(player.x+player.w, p.x+p.w) - Math.max(player.x, p.x);
+      const oy = Math.min(player.y+player.h, p.y+p.h) - Math.max(player.y, p.y);
+      if (ox>0 && oy>0) {
+        if (ox < oy) {
+          if (player.x + player.w/2 < p.x + p.w/2) player.x -= ox; else player.x += ox;
+          player.vx = 0;
+        } else {
+          if (player.y + player.h/2 < p.y + p.h/2) {
+            player.y -= oy; player.vy = 0; player.onGround = true;
+            if (powers.includes('double_jump')) player.extraJumps = 1;
+          } else { player.y += oy; if (player.vy<0) player.vy = 0; }
+        }
+      }
+    } else {
+      // One-way platform — land on top only
+      const prevBot = player.y+player.h-player.vy;
+      const curBot  = player.y+player.h;
+      const inX = player.x+player.w > p.x+4 && player.x < p.x+p.w-4;
+      if (inX && prevBot<=p.y && curBot>=p.y && player.vy>=0) {
+        player.y = p.y-player.h; player.vy=0; player.onGround=true;
+        if (powers.includes('double_jump')) player.extraJumps=1;
+      }
     }
   });
 
@@ -1270,6 +1295,15 @@ function updateLevel() {
   if (player.x+player.w >= postcardX-6) triggerPostcard();
 
   camX = Math.max(0, Math.min(player.x-W*0.3, LEVEL_W-W));
+  // Vertical camera: follow the diver down through the water column
+  if (inWater) {
+    const seabed = (z.seabed!=null) ? z.seabed : GROUND_Y;
+    const ty = player.y - H*0.42;
+    camY = Math.max(waterTop-60, Math.min(ty, seabed+90 - H));
+  } else {
+    camY += (0 - camY) * 0.15;            // ease back to 0 on land
+    if (Math.abs(camY) < 0.5) camY = 0;
+  }
   player.animTimer++;
   if (player.animTimer>7) { player.animTimer=0; player.animFrame=(player.animFrame+1)%4; }
   if (hudPulse>1) hudPulse -= (hudPulse-1)*0.12;
@@ -1402,6 +1436,10 @@ function drawLevel() {
     ctx.fillStyle=fog; ctx.fillRect(0, GROUND_Y-140, W, 150);
   }
 
+  // ── Play layer: shift vertically by the camera (deep water descent) ──
+  ctx.save();
+  ctx.translate(0, -Math.round(camY));
+
   // ── Layer 3: Platforms (play layer) ──
   platforms.forEach(p => drawPlatform(p,T));
 
@@ -1437,10 +1475,13 @@ function drawLevel() {
   drawPostcardMarker();
   drawPlayer();
 
-  // ── Cave / dark ranges (under the foreground so foliage stays dark) ──
-  drawCaveDark();
-  // ── Underwater tint + caustics + bubbles for swim zones ──
+  // ── Underwater tint + caustics + bubbles for swim zones (world-space) ──
   drawWater();
+
+  ctx.restore();   // end vertical-camera translate
+
+  // ── Cave / dark ranges (screen-space overlay) ──
+  drawCaveDark();
 
   // ── Layer 4: Foreground occluders (parallax 1.25) — the Ori depth trick ──
   // 'multiply' lets silhouette art on a WHITE background drop its white for free.
@@ -1464,23 +1505,46 @@ function drawPlatform(p,T) {
     // Draw only within THIS segment's screen span, so gaps read as chasms.
     const x0=Math.max(sx,0), x1=Math.min(sx+sw,W);
     if (x1<=x0) return;
+    const DEPTH = 1400;   // fixed earth depth (camera-safe)
     ctx.save();
-    ctx.beginPath(); ctx.rect(x0, p.y-24, x1-x0, H-(p.y-24)); ctx.clip();
-    ctx.fillStyle=T.groundBot; ctx.fillRect(x0, p.y+40, x1-x0, H);
+    ctx.beginPath(); ctx.rect(x0, p.y-24, x1-x0, DEPTH); ctx.clip();
+    ctx.fillStyle=T.groundBot; ctx.fillRect(x0, p.y+30, x1-x0, DEPTH);
     if (artOk('ground')) {
       const img=currentArt['ground'];
-      const gh=H - p.y + 60;
+      const gh=160;                                  // fixed cap height
       const gw=gh*(img.width/img.height);
-      // tile in WORLD space so the ground scrolls with the camera
-      const firstWorld = Math.floor(camX / gw) * gw;
-      for(let wx=firstWorld; wx - camX < x1; wx+=gw) {
-        ctx.drawImage(img, wx - camX, p.y-12, gw, gh);
-      }
+      const firstWorld = Math.floor(camX / gw) * gw; // tile in world space → scrolls
+      for(let wx=firstWorld; wx - camX < x1; wx+=gw) ctx.drawImage(img, wx - camX, p.y-12, gw, gh);
     } else {
       ctx.fillStyle=T.groundTop; ctx.fillRect(x0,p.y,x1-x0,p.h);
       ctx.fillStyle=T.grassLine; ctx.fillRect(x0,p.y,x1-x0,8);
     }
     ctx.restore();
+    return;
+  }
+
+  // Solid obstacle — tree trunk / rock wall (blocks on all sides)
+  if (p.solid) {
+    if (p.kind==='tree') {
+      // trunk
+      ctx.fillStyle = adjustColor(T.groundBot, 14);
+      roundRect(ctx, sx, p.y, sw, p.h, 5); ctx.fill();
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.stroke();
+      // bark lines
+      ctx.strokeStyle = hexA(C.ink,0.4); ctx.lineWidth = 1;
+      for (let i=1;i<3;i++){ const lx=sx+sw*i/3; ctx.beginPath(); ctx.moveTo(lx,p.y+6); ctx.lineTo(lx,p.y+p.h-6); ctx.stroke(); }
+      // canopy blob at top
+      ctx.fillStyle = T.mid;
+      ctx.beginPath(); ctx.ellipse(sx+sw/2, p.y, sw*1.5, 36, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = T.grassLine;
+      ctx.beginPath(); ctx.ellipse(sx+sw/2-10, p.y-6, sw*1.0, 24, 0, 0, Math.PI*2); ctx.fill();
+    } else {
+      // rock wall
+      ctx.fillStyle = adjustColor(T.near, 10);
+      roundRect(ctx, sx, p.y, sw, p.h, 6); ctx.fill();
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = 'rgba(245,239,224,0.10)'; ctx.fillRect(sx+5, p.y+5, sw-10, 5);
+    }
     return;
   }
 
@@ -1745,9 +1809,11 @@ function drawPlayer() {
   ctx.save();
   if (player.facing===-1) { ctx.translate(sx+w/2,0); ctx.scale(-1,1); ctx.translate(-(sx+w/2),0); }
 
-  // Shadow
-  ctx.fillStyle='rgba(27,42,59,0.22)';
-  ctx.beginPath(); ctx.ellipse(sx+w/2,GROUND_Y+4,w*.45,5,0,0,Math.PI*2); ctx.fill();
+  // Shadow — at the feet, only on land
+  if (!player.inWater) {
+    ctx.fillStyle='rgba(27,42,59,0.22)';
+    ctx.beginPath(); ctx.ellipse(sx+w/2, sy+h+3, w*.45, 5, 0, 0, Math.PI*2); ctx.fill();
+  }
 
   // Dash trail
   if (player.dashTimer>0) {
@@ -1815,50 +1881,51 @@ function drawCaveDark() {
   ctx.restore();
 }
 
-// Underwater rendering for swim zones: blue grade, surface line, caustic light, bubbles.
+// Underwater rendering for swim zones (WORLD-space, drawn inside the camera translate).
 function drawWater() {
   const sz = activeZones.find(z => z.mode==='swim');
   if (!sz) return;
   const viewL=camX, viewR=camX+W;
   const o = Math.max(0, Math.min(viewR,sz.x1) - Math.max(viewL,sz.x0));
   if (o<=0) return;
-  const k = Math.min(1, o/W);           // how much of the view is underwater
+  const k = Math.min(1, o/W);
   const top = sz.waterTop;
+  const bottom = (sz.seabed!=null ? sz.seabed : GROUND_Y) + 220;
 
-  // Blue depth grade
-  const g = ctx.createLinearGradient(0, top, 0, H);
-  g.addColorStop(0, `rgba(26,110,150,${0.20*k})`);
-  g.addColorStop(1, `rgba(8,40,80,${0.60*k})`);
-  ctx.fillStyle=g; ctx.fillRect(0, top, W, H-top);
+  // Blue depth grade — light near surface, dark deep
+  const g = ctx.createLinearGradient(0, top, 0, bottom);
+  g.addColorStop(0, `rgba(30,120,160,${0.18*k})`);
+  g.addColorStop(1, `rgba(5,24,55,${0.78*k})`);
+  ctx.fillStyle=g; ctx.fillRect(0, top, W, bottom-top);
 
   // Shimmering surface line
   ctx.fillStyle = `rgba(190,235,245,${0.18*k})`;
   ctx.fillRect(0, top, W, 2 + Math.sin(levelTime*3)*1);
 
-  // Caustic light shafts
+  // Caustic light shafts near the surface
   ctx.save();
   ctx.globalCompositeOperation='screen';
   for (let i=0;i<5;i++) {
     const cx = (((i*230 - camX*0.5 + levelTime*18) % (W+230)) + (W+230)) % (W+230) - 115;
     const a = 0.06*k*(0.6+0.4*Math.sin(levelTime*1.3+i));
-    const grd = ctx.createLinearGradient(cx, top, cx-70, H);
+    const grd = ctx.createLinearGradient(cx, top, cx-70, top+380);
     grd.addColorStop(0, `rgba(150,225,240,${a})`);
     grd.addColorStop(1, 'rgba(150,225,240,0)');
     ctx.fillStyle=grd;
     ctx.beginPath(); ctx.moveTo(cx, top); ctx.lineTo(cx+44, top);
-    ctx.lineTo(cx-46, H); ctx.lineTo(cx-100, H); ctx.closePath(); ctx.fill();
+    ctx.lineTo(cx-46, top+380); ctx.lineTo(cx-100, top+380); ctx.closePath(); ctx.fill();
   }
   ctx.restore();
 
-  // Rising bubbles
-  for (let i=0;i<28;i++) {
+  // Rising bubbles — anchored to the visible window
+  ctx.fillStyle = 'rgba(220,245,255,1)';
+  for (let i=0;i<30;i++) {
     const bx = (((i*123 - camX*0.8) % (W+40)) + (W+40)) % (W+40) - 20;
-    const span = H - top;
-    const by = H - ((levelTime*28 + i*47) % span);
-    const r = 1 + (i%3);
-    ctx.globalAlpha = 0.35*k;
-    ctx.fillStyle = 'rgba(220,245,255,1)';
-    ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI*2); ctx.fill();
+    const sy = H - ((levelTime*26 + i*43) % H);     // screen-relative rise
+    const by = camY + sy;                            // → world y (we're inside translate)
+    if (by < top+4) continue;
+    ctx.globalAlpha = 0.30*k;
+    ctx.beginPath(); ctx.arc(bx, by, 1 + (i%3), 0, Math.PI*2); ctx.fill();
   }
   ctx.globalAlpha = 1;
 }
