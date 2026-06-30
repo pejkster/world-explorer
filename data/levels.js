@@ -165,10 +165,19 @@ window.STATIC_LEVELS = [
         power: "glide", powerName: "Canopy Swing", powerDesc: "Hold ↑ while falling to glide between the trees.", powerEmoji: "🌿" },
       { id: "scuba", name: "Scuba Gear", latinName: "", emoji: "🤿",
         fact: "(The key to the deep — with this I could dive into the reef.)", x: 3420, y: 260, forAge: "both", rare: false },
+      // ── Chapter 2: The Reef ──
+      { id: "reef_shark", name: "Grey Reef Shark", latinName: "Carcharhinus amblyrhynchos", emoji: "🦈",
+        fact: "(Add your reef shark story here.)", x: 4020, y: 300, forAge: "both", rare: false },
+      { id: "manta", name: "Manta Ray", latinName: "Mobula birostris", emoji: "🐟",
+        fact: "(Add your manta story here.)", x: 4720, y: 235, forAge: "both", rare: false },
+      { id: "mantis_shrimp", name: "Mantis Shrimp", latinName: "Odontodactylus scyllarus", emoji: "🦐",
+        fact: "(Add your mantis shrimp story here.)", x: 5320, y: 440, forAge: "both", rare: false },
+      { id: "nudibranch", name: "Nudibranch", latinName: "Nudibranchia", emoji: "🐌",
+        fact: "(Add your nudibranch story here.)", x: 5950, y: 380, forAge: "both", rare: true },
     ],
     postcard: {
-      message: "(Chapter 1 ends here for now — the reef, the islands, and Bali come next.)",
-      backgroundColour: "#1c5a44"
+      message: "(Chapter 2 ends here for now — the island crossing and Bali come next.)",
+      backgroundColour: "#0a3b5c"
     }
   }
 ];

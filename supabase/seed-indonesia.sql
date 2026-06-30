@@ -19,4 +19,9 @@ insert into collectibles (level_id, name, latin_name, emoji, fact, x, y, for_age
 ('indonesia','Orangutan','Pongo pygmaeus','🦧','(Add your orangutan story here.)',780,250,'both',false,'','','','',1),
 ('indonesia','Proboscis Monkey','Nasalis larvatus','🐒','(Add your proboscis monkey story here.)',1260,240,'both',false,'','','','',2),
 ('indonesia','Gibbon','Hylobatidae','🐒','(Add your gibbon story here.)',2100,180,'both',false,'glide','Canopy Swing','Hold ↑ while falling to glide between the trees.','🌿',3),
-('indonesia','Scuba Gear','','🤿','(The key to the deep — with this I could dive into the reef.)',3420,260,'both',false,'','','','',4);
+('indonesia','Scuba Gear','','🤿','(The key to the deep — with this I could dive into the reef.)',3420,260,'both',false,'','','','',4),
+-- Chapter 2: The Reef
+('indonesia','Grey Reef Shark','Carcharhinus amblyrhynchos','🦈','(Add your reef shark story here.)',4020,300,'both',false,'','','','',5),
+('indonesia','Manta Ray','Mobula birostris','🐟','(Add your manta story here.)',4720,235,'both',false,'','','','',6),
+('indonesia','Mantis Shrimp','Odontodactylus scyllarus','🦐','(Add your mantis shrimp story here.)',5320,440,'both',false,'','','','',7),
+('indonesia','Nudibranch','Nudibranchia','🐌','(Add your nudibranch story here.)',5950,380,'both',true,'','','','',8);

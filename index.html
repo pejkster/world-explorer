@@ -671,37 +671,51 @@ const LAYOUTS = {
     dark: [[2760, 3820]],   // the cave is dark
   },
 
-  // ── INDONESIA · Chapter 1: The Rainforest (more chapters to follow) ──
+  // ── INDONESIA · Ch.1 Rainforest → Ch.2 Reef (one continuous level) ──
   indonesia: {
-    width: 3700,
+    width: 6600,
+    zones: [
+      { mode:'platform', x0:0,    x1:3640 },
+      { mode:'swim',     x0:3640, x1:6600, waterTop:165 },   // the reef
+    ],
     groundSegs: [
       { x:0,    w:1500 },                 // jungle floor
-      { x:1620, w:900  },                 // after a small log gap (1500–1620)
-      { x:2680, w:1020 },                 // river bank → cliff (glide gap 2520–2680)
+      { x:1620, w:900  },                 // after a small log gap
+      { x:2680, w:920  },                 // river bank → dive cliff (ends 3600)
+      { x:3700, w:2900 },                 // reef seabed (under the water)
     ],
     plats: [
-      // Arrival — low canopy roots
+      // ── Ch.1 Rainforest ──
       [300, GY-95], [540, GY-140], [780, GY-105], [1020, GY-150],
       [1260, GY-110],
       [1560, GY-55],                      // stepping log over the gap
-      // Canopy climb — the gibbon (Glide) lives up here
       [1700, GY-150], [1900, GY-220], [2100, GY-180], [2320, GY-230],
       [2600, GY-55],                      // stepping log over the glide gap
-      // River bank to the dive cliff
       [2760, GY-120], [2980, GY-180], [3200, GY-130], [3420, GY-90],
+      // ── Ch.2 Reef coral outcrops (rest spots at various depths) ──
+      [3860, GY-50], [4220, GY-130], [4600, GY-70], [5000, GY-160],
+      [5400, GY-90], [5800, GY-140], [6150, GY-60],
     ],
-    // by collectible NAME (matches the seed below)
     collPos: {
+      // Ch.1
       "Orangutan":        { x:780,  y:GY-150 },
       "Proboscis Monkey": { x:1260, y:GY-160 },
       "Gibbon":           { x:2100, y:GY-230 },   // grants Glide
       "Scuba Gear":       { x:3420, y:GY-140 },   // the key — at the dive cliff
+      // Ch.2 (depths within the water column 165–512)
+      "Grey Reef Shark":  { x:4020, y:300 },
+      "Manta Ray":        { x:4720, y:235 },
+      "Mantis Shrimp":    { x:5320, y:440 },
+      "Nudibranch":       { x:5950, y:380 },
     },
     story: [
       { x:160,  text:"Indonesia. I stepped into a rainforest older than memory." },
       { x:1100, text:"The trees were full of faces — watching, swinging, calling." },
       { x:2100, text:"A gibbon showed me how to fly between the branches." },
-      { x:3300, text:"At the river's edge I strapped on a tank and looked down into the blue…" },
+      { x:3380, text:"At the river's edge I strapped on a tank and dropped into the blue…" },
+      { x:3850, text:"Beneath the surface the noise of the world vanished. Only the reef remained." },
+      { x:4720, text:"A manta passed overhead like a slow, dark cloud." },
+      { x:6000, text:"I surfaced near a wooden boat, the islands waiting on the horizon…" },
     ],
     dark: [],
   },
@@ -740,6 +754,11 @@ let collectibles = [];
 let particles    = [];
 let activeStory  = [];   // [{x, text}] story-marker captions
 let activeDark   = [];   // [[start,end]] cave/dark ranges
+let activeZones  = [];   // [{mode:'platform'|'swim', x0, x1, waterTop?}]
+function zoneAt(x) {
+  for (const z of activeZones) if (x>=z.x0 && x<z.x1) return z;
+  return activeZones[activeZones.length-1] || { mode:'platform' };
+}
 let postcardX    = 0;
 let levelTime    = 0;
 let hudPulse     = 1;
@@ -1076,6 +1095,7 @@ function enterLevel(lvl) {
   LEVEL_W     = layout ? layout.width : 2100;
   activeStory = layout ? layout.story : [];
   activeDark  = layout ? (layout.dark || []) : [];
+  activeZones = (layout && layout.zones) ? layout.zones : [{ mode:'platform', x0:0, x1:LEVEL_W }];
 
   const ageF=String(char.age);
   collectibles = lvl.collectibles
@@ -1169,77 +1189,61 @@ function updateLevel() {
   const goL = keys['ArrowLeft']  || keys['a'] || touch.left;
   const goR = keys['ArrowRight'] || keys['d'] || touch.right;
   const goJ = keys['ArrowUp'] || keys[' '] || keys['w'] || touch.jump;
-  const goD = keys['Shift'] || keys['z'] || keys['Z'] || touch.dash;
+  const goDn= keys['ArrowDown'] || keys['s'] || touch.dash;     // swim down
+  const goDash = keys['Shift'] || keys['z'] || keys['Z'] || touch.dash;
 
-  // ── Horizontal: acceleration + friction (momentum feels alive) ──
-  const dir = (goR?1:0) - (goL?1:0);
-  if (player.dashTimer > 0) {
-    // Locked dash velocity
-    player.vx = player.facing * speed * FEEL.DASH_MULT;
-    player.dashTimer--;
+  const z = zoneAt(player.x);
+  const waterTop = (z.mode==='swim') ? z.waterTop : -1;
+  const inWater = waterTop>=0 && (player.y+player.h) > waterTop;
+  player.inWater = inWater;
+
+  if (inWater) {
+    // ── SWIM (free float, no gravity) ──
+    const acc=0.5, drag=0.86, maxS=3.4;
+    const dx=(goR?1:0)-(goL?1:0);
+    const dy=(goDn?1:0)-(goJ?1:0);
+    if (dx) { player.vx+=dx*acc; player.facing=dx>0?1:-1; } else player.vx*=drag;
+    if (dy)   player.vy+=dy*acc; else player.vy*=drag;
+    player.vy += 0.05;                       // very gentle sink toward the reef
+    player.vx=Math.max(-maxS,Math.min(maxS,player.vx));
+    player.vy=Math.max(-maxS,Math.min(maxS,player.vy));
+    player.jumping=false;
   } else {
-    const accel = player.onGround ? FEEL.ACCEL : FEEL.AIR_ACCEL;
-    if (dir !== 0) {
-      player.vx += dir * accel;
-      player.vx = Math.max(-speed, Math.min(speed, player.vx));
-      player.facing = dir;
+    // ── PLATFORM ──
+    const dir = (goR?1:0) - (goL?1:0);
+    if (player.dashTimer > 0) {
+      player.vx = player.facing * speed * FEEL.DASH_MULT; player.dashTimer--;
     } else {
-      player.vx *= player.onGround ? FEEL.FRICTION : FEEL.AIR_DRAG;
-      if (Math.abs(player.vx) < 0.1) player.vx = 0;
+      const accel = player.onGround ? FEEL.ACCEL : FEEL.AIR_ACCEL;
+      if (dir !== 0) { player.vx += dir*accel; player.vx=Math.max(-speed,Math.min(speed,player.vx)); player.facing=dir; }
+      else { player.vx *= player.onGround?FEEL.FRICTION:FEEL.AIR_DRAG; if (Math.abs(player.vx)<0.1) player.vx=0; }
     }
+    if (powers.includes('dash') && goDash && dashWasUp && player.dashCooldown<=0) {
+      player.dashTimer=FEEL.DASH_FR; player.dashCooldown=FEEL.DASH_CD; sfx('dash');
+    }
+    dashWasUp=!goDash; if (player.dashCooldown>0) player.dashCooldown--;
+    if (player.onGround) player.coyote=FEEL.COYOTE; else if (player.coyote>0) player.coyote--;
+    const jp = goJ && jumpWasUp;
+    if (jp) player.jumpBuf=FEEL.BUFFER; else if (player.jumpBuf>0) player.jumpBuf--;
+    if (player.jumpBuf>0 && player.coyote>0) {
+      player.vy=-jumpH; player.jumping=true; player.onGround=false; player.coyote=0; player.jumpBuf=0; sfx('jump');
+    } else if (jp && !player.onGround && player.coyote<=0 && powers.includes('double_jump') && player.extraJumps>0) {
+      player.vy=-jumpH*0.85; player.extraJumps--; player.jumping=true; sfx('jump');
+    }
+    jumpWasUp=!goJ;
+    if (player.jumping && !goJ && player.vy<0) { player.vy*=FEEL.CUT; player.jumping=false; }
+    if (player.vy>=0) player.jumping=false;
+    if (powers.includes('glide') && goJ && !player.onGround && player.vy>0) player.vy=Math.min(player.vy,2.2);
+    player.vy = Math.min(player.vy+GRAVITY, 20);
   }
 
-  // ── Dash trigger (timed burst, not 1-frame) ──
-  if (powers.includes('dash') && goD && dashWasUp && player.dashCooldown<=0) {
-    player.dashTimer = FEEL.DASH_FR;
-    player.dashCooldown = FEEL.DASH_CD;
-    sfx('dash');
-  }
-  dashWasUp = !goD;
-  if (player.dashCooldown>0) player.dashCooldown--;
-
-  // ── Coyote time + jump buffer bookkeeping ──
-  if (player.onGround) player.coyote = FEEL.COYOTE;
-  else if (player.coyote>0) player.coyote--;
-
-  const jumpPressed = goJ && jumpWasUp;
-  if (jumpPressed) player.jumpBuf = FEEL.BUFFER;
-  else if (player.jumpBuf>0) player.jumpBuf--;
-
-  // ── Execute jump ──
-  if (player.jumpBuf>0 && player.coyote>0) {
-    player.vy = -jumpH;
-    player.jumping = true;
-    player.onGround = false;
-    player.coyote = 0;
-    player.jumpBuf = 0;
-    sfx('jump');
-  } else if (jumpPressed && !player.onGround && player.coyote<=0
-             && powers.includes('double_jump') && player.extraJumps>0) {
-    player.vy = -jumpH*0.85;
-    player.extraJumps--;
-    player.jumping = true;
-    sfx('jump');
-  }
-  jumpWasUp = !goJ;
-
-  // ── Variable jump height: release early = shorter hop ──
-  if (player.jumping && !goJ && player.vy < 0) {
-    player.vy *= FEEL.CUT;
-    player.jumping = false;
-  }
-  if (player.vy >= 0) player.jumping = false;
-
-  // ── Glide ──
-  if (powers.includes('glide') && goJ && !player.onGround && player.vy>0)
-    player.vy = Math.min(player.vy, 2.2);
-
-  player.vy = Math.min(player.vy+GRAVITY, 20);
   player.x += player.vx;
   player.y += player.vy;
 
   if (player.x<0) player.x=0;
   if (player.x>LEVEL_W-player.w) player.x=LEVEL_W-player.w;
+  // Can't swim out through the surface
+  if (inWater && player.y < waterTop-10) { player.y=waterTop-10; if (player.vy<0) player.vy=0; }
 
   player.onGround = false;
   platforms.forEach(p => {
@@ -1252,12 +1256,10 @@ function updateLevel() {
     }
   });
 
-  // Remember the last safe ground spot; respawn if you fall in a gap (no penalty)
-  if (player.onGround) { player.safeX = player.x; player.safeY = player.y; }
-  if (player.y > H + 140) {
-    player.x = player.safeX; player.y = player.safeY - 4;
-    player.vx = player.vy = 0;
-    sfx('land');
+  // Safe-spot + fall respawn (platform mode only — you can't fall in water)
+  if (!inWater) {
+    if (player.onGround) { player.safeX = player.x; player.safeY = player.y; }
+    if (player.y > H + 140) { player.x=player.safeX; player.y=player.safeY-4; player.vx=player.vy=0; sfx('land'); }
   }
 
   collectibles.forEach(col => {
@@ -1437,6 +1439,8 @@ function drawLevel() {
 
   // ── Cave / dark ranges (under the foreground so foliage stays dark) ──
   drawCaveDark();
+  // ── Underwater tint + caustics + bubbles for swim zones ──
+  drawWater();
 
   // ── Layer 4: Foreground occluders (parallax 1.25) — the Ori depth trick ──
   // 'multiply' lets silhouette art on a WHITE background drop its white for free.
@@ -1811,6 +1815,54 @@ function drawCaveDark() {
   ctx.restore();
 }
 
+// Underwater rendering for swim zones: blue grade, surface line, caustic light, bubbles.
+function drawWater() {
+  const sz = activeZones.find(z => z.mode==='swim');
+  if (!sz) return;
+  const viewL=camX, viewR=camX+W;
+  const o = Math.max(0, Math.min(viewR,sz.x1) - Math.max(viewL,sz.x0));
+  if (o<=0) return;
+  const k = Math.min(1, o/W);           // how much of the view is underwater
+  const top = sz.waterTop;
+
+  // Blue depth grade
+  const g = ctx.createLinearGradient(0, top, 0, H);
+  g.addColorStop(0, `rgba(26,110,150,${0.20*k})`);
+  g.addColorStop(1, `rgba(8,40,80,${0.60*k})`);
+  ctx.fillStyle=g; ctx.fillRect(0, top, W, H-top);
+
+  // Shimmering surface line
+  ctx.fillStyle = `rgba(190,235,245,${0.18*k})`;
+  ctx.fillRect(0, top, W, 2 + Math.sin(levelTime*3)*1);
+
+  // Caustic light shafts
+  ctx.save();
+  ctx.globalCompositeOperation='screen';
+  for (let i=0;i<5;i++) {
+    const cx = (((i*230 - camX*0.5 + levelTime*18) % (W+230)) + (W+230)) % (W+230) - 115;
+    const a = 0.06*k*(0.6+0.4*Math.sin(levelTime*1.3+i));
+    const grd = ctx.createLinearGradient(cx, top, cx-70, H);
+    grd.addColorStop(0, `rgba(150,225,240,${a})`);
+    grd.addColorStop(1, 'rgba(150,225,240,0)');
+    ctx.fillStyle=grd;
+    ctx.beginPath(); ctx.moveTo(cx, top); ctx.lineTo(cx+44, top);
+    ctx.lineTo(cx-46, H); ctx.lineTo(cx-100, H); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+
+  // Rising bubbles
+  for (let i=0;i<28;i++) {
+    const bx = (((i*123 - camX*0.8) % (W+40)) + (W+40)) % (W+40) - 20;
+    const span = H - top;
+    const by = H - ((levelTime*28 + i*47) % span);
+    const r = 1 + (i%3);
+    ctx.globalAlpha = 0.35*k;
+    ctx.fillStyle = 'rgba(220,245,255,1)';
+    ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
 // Story-marker captions — fade in as the player passes each beat. Your voice.
 function drawStoryCaption() {
   if (!activeStory.length) return;
@@ -1916,9 +1968,15 @@ function drawTouchControls() {
 
   drawCtrlBtn(ZONES.left,  '◀', touch.left,  false);
   drawCtrlBtn(ZONES.right, '▶', touch.right, false);
-  drawCtrlBtn(ZONES.jump,  '↑', touch.jump,  true);   // big primary
-  if (powers.includes('dash'))
-    drawCtrlBtn(ZONES.dash, '⚡', touch.dash, false);
+  if (player.inWater) {
+    // Swim: jump = up, dash button = down
+    drawCtrlBtn(ZONES.jump, '▲', touch.jump, true);
+    drawCtrlBtn(ZONES.dash, '▼', touch.dash, false);
+  } else {
+    drawCtrlBtn(ZONES.jump, '↑', touch.jump, true);   // big primary
+    if (powers.includes('dash'))
+      drawCtrlBtn(ZONES.dash, '⚡', touch.dash, false);
+  }
 }
 
 function drawCtrlBtn(z, label, pressed, large) {
