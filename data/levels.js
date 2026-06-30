@@ -146,5 +146,29 @@ window.STATIC_LEVELS = [
       message: "Hello from Japan! I'm in a tiny ramen shop eating noodles while snow falls outside. The city is electric — millions of people, vending machines everywhere, a bullet train that blurs the trees. I went to a Shinto shrine at sunrise and it was the most peaceful place I've ever stood. I wish you could see the cherry blossoms in spring — the whole city turns pink. Sending so much love!",
       backgroundColour: "#1A3A5C"
     }
+  },
+  {
+    // INDONESIA — Chapter 1: The Rainforest (placeholder facts — edit in admin)
+    id: "indonesia",
+    name: "Indonesia",
+    emoji: "🇮🇩",
+    unlocked: true,
+    mapPosition: { x: 79, y: 62 },
+    theme: "jungle",
+    collectibles: [
+      { id: "orangutan", name: "Orangutan", latinName: "Pongo pygmaeus", emoji: "🦧",
+        fact: "(Add your orangutan story here.)", x: 780, y: 250, forAge: "both", rare: false },
+      { id: "proboscis", name: "Proboscis Monkey", latinName: "Nasalis larvatus", emoji: "🐒",
+        fact: "(Add your proboscis monkey story here.)", x: 1260, y: 240, forAge: "both", rare: false },
+      { id: "gibbon", name: "Gibbon", latinName: "Hylobatidae", emoji: "🐒",
+        fact: "(Add your gibbon story here.)", x: 2100, y: 180, forAge: "both", rare: false,
+        power: "glide", powerName: "Canopy Swing", powerDesc: "Hold ↑ while falling to glide between the trees.", powerEmoji: "🌿" },
+      { id: "scuba", name: "Scuba Gear", latinName: "", emoji: "🤿",
+        fact: "(The key to the deep — with this I could dive into the reef.)", x: 3420, y: 260, forAge: "both", rare: false },
+    ],
+    postcard: {
+      message: "(Chapter 1 ends here for now — the reef, the islands, and Bali come next.)",
+      backgroundColour: "#1c5a44"
+    }
   }
 ];

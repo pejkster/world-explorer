@@ -605,6 +605,14 @@ const THEMES = {
     fog:'#a4823a', particle:'#FF8C42', particleKind:'dust', landmark:'volcano',
     tint:'rgba(196,137,42,0.07)', life:'bird',
   },
+  jungle:  {  // Indonesia rainforest — lush green, gold light shafts, fireflies
+    skyTop:'#0d3b3a', skyBot:'#1c5a44', horizon:'#3f8a4a',
+    groundTop:'#1d4a2c', groundBot:'#0c2418',
+    platFill:'#D4874A', platEdge:'#1B2A3B', grassLine:'#4f9a48',
+    far:'#1f5a52', mid:'#1d5236', near:'#163d28', fore:'#0a1d12',
+    fog:'#2f7a5a', particle:'#F4C842', particleKind:'firefly', landmark:'volcano',
+    tint:'rgba(120,190,90,0.07)', life:'bird',
+  },
 };
 
 // ═══════════════════════════════════════════════════════
@@ -661,6 +669,41 @@ const LAYOUTS = {
       { x:6750, text:"From the very top, I wrote this for you…" },
     ],
     dark: [[2760, 3820]],   // the cave is dark
+  },
+
+  // ── INDONESIA · Chapter 1: The Rainforest (more chapters to follow) ──
+  indonesia: {
+    width: 3700,
+    groundSegs: [
+      { x:0,    w:1500 },                 // jungle floor
+      { x:1620, w:900  },                 // after a small log gap (1500–1620)
+      { x:2680, w:1020 },                 // river bank → cliff (glide gap 2520–2680)
+    ],
+    plats: [
+      // Arrival — low canopy roots
+      [300, GY-95], [540, GY-140], [780, GY-105], [1020, GY-150],
+      [1260, GY-110],
+      [1560, GY-55],                      // stepping log over the gap
+      // Canopy climb — the gibbon (Glide) lives up here
+      [1700, GY-150], [1900, GY-220], [2100, GY-180], [2320, GY-230],
+      [2600, GY-55],                      // stepping log over the glide gap
+      // River bank to the dive cliff
+      [2760, GY-120], [2980, GY-180], [3200, GY-130], [3420, GY-90],
+    ],
+    // by collectible NAME (matches the seed below)
+    collPos: {
+      "Orangutan":        { x:780,  y:GY-150 },
+      "Proboscis Monkey": { x:1260, y:GY-160 },
+      "Gibbon":           { x:2100, y:GY-230 },   // grants Glide
+      "Scuba Gear":       { x:3420, y:GY-140 },   // the key — at the dive cliff
+    },
+    story: [
+      { x:160,  text:"Indonesia. I stepped into a rainforest older than memory." },
+      { x:1100, text:"The trees were full of faces — watching, swinging, calling." },
+      { x:2100, text:"A gibbon showed me how to fly between the branches." },
+      { x:3300, text:"At the river's edge I strapped on a tank and looked down into the blue…" },
+    ],
+    dark: [],
   },
 };
 function getLayout(id) { return LAYOUTS[id] || null; }
